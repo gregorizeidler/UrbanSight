@@ -134,7 +134,7 @@ pip install -r requirements.txt
 # 3. Crie uma cópia do .env.example e preencha com seus dados
 cp .env.example .env 
 
-# 3. Execute o UrbanSight (Método Recomendado)
+# 4. Execute o UrbanSight (Método Recomendado)
 python run_urbansight.py
 
 # OU diretamente via Streamlit
