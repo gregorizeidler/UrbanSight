@@ -147,7 +147,7 @@ streamlit run streamlit_app.py
 ```bash
 # Execute a API
 cd api
-python main.py
+python -m api.main
 ```
 
 **📡 Documentação:** `http://localhost:8000/docs`
