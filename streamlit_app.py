@@ -11,6 +11,7 @@ import time
 
 # Import our agents
 from agents.orchestrator import PropertyAnalysisOrchestrator
+from agents.profile_chatbot import ProfileChatbot, ProfileChatbotResult
 from config import Config
 
 # Configure Streamlit page
@@ -26,6 +27,10 @@ if 'analysis_results' not in st.session_state:
     st.session_state.analysis_results = {}
 if 'current_analysis' not in st.session_state:
     st.session_state.current_analysis = None
+if 'user_profile' not in st.session_state:
+    st.session_state.user_profile = None
+if 'show_profile_chatbot' not in st.session_state:
+    st.session_state.show_profile_chatbot = False
 
 # Initialize orchestrator
 @st.cache_resource
@@ -33,6 +38,10 @@ def get_orchestrator():
     return PropertyAnalysisOrchestrator()
 
 orchestrator = get_orchestrator()
+
+@st.cache_resource
+def get_profile_chatbot():
+    return ProfileChatbot()
 
 # Helper functions
 def get_score_grade(score):
@@ -545,7 +554,7 @@ with st.sidebar:
         for address in st.session_state.analysis_results.keys():
             if st.button(f"📍 {address[:25]}...", key=f"hist_{address}", use_container_width=True):
                 st.session_state.current_analysis = address
-                st.experimental_rerun()
+                st.rerun()
     
     st.markdown("---")
 
@@ -609,6 +618,13 @@ with col1:
                 type="primary", 
                 use_container_width=True
             )
+        
+        # Profile Chatbot Button
+        st.markdown("---")
+        col_profile1, col_profile2, col_profile3 = st.columns([1, 2, 1])
+        with col_profile2:
+            if st.button("🤖 Definir Meu Perfil Primeiro", use_container_width=True):
+                st.session_state.show_profile_chatbot = True
 
 with col2:
     st.markdown('<h3 style="color: white; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 1rem; border-radius: 10px; text-align: center;">📈 Dashboard</h3>', unsafe_allow_html=True)
@@ -700,6 +716,70 @@ if analyze_button and address:
 elif analyze_button and not address:
     st.warning("⚠️ Por favor, digite um endereço válido para análise")
 
+# Profile Chatbot Section
+if st.session_state.show_profile_chatbot:
+    st.markdown("---")
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 2rem; border-radius: 15px; margin: 1rem 0;">
+        <h2 style="color: white; text-align: center; margin: 0;">🤖 Chatbot de Perfil UrbanSight</h2>
+        <p style="color: white; text-align: center; margin: 0.5rem 0;">Vamos conhecer suas preferências para personalizar suas análises</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    profile_chatbot = get_profile_chatbot()
+    questions = profile_chatbot.get_questions()
+    
+    # Initialize responses in session state
+    if 'chatbot_responses' not in st.session_state:
+        st.session_state.chatbot_responses = {}
+    
+    # Display questions
+    for question in questions:
+        st.markdown(f"### {question.question}")
+        
+        if question.question_type == "single":
+            response = st.radio(
+                "Selecione uma opção:",
+                question.options,
+                key=f"q_{question.id}",
+                label_visibility="collapsed"
+            )
+            st.session_state.chatbot_responses[question.id] = response
+            
+        elif question.question_type == "multiple":
+            responses = st.multiselect(
+                "Selecione uma ou mais opções:",
+                question.options,
+                key=f"q_{question.id}",
+                default=st.session_state.chatbot_responses.get(question.id, [])
+            )
+            st.session_state.chatbot_responses[question.id] = responses
+        
+        st.markdown("---")
+    
+    # Process profile button
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        if st.button("✅ Finalizar Perfil", type="primary", use_container_width=True):
+            try:
+                profile_result = profile_chatbot.process_responses(st.session_state.chatbot_responses)
+                if profile_result.success:
+                    st.session_state.user_profile = profile_result
+                    st.session_state.show_profile_chatbot = False
+                    st.success("✅ Perfil criado com sucesso!")
+                    st.balloons()
+                    time.sleep(2)
+                    st.rerun()
+                else:
+                    st.error(f"❌ Erro ao processar perfil: {profile_result.error_message}")
+            except Exception as e:
+                st.error(f"❌ Erro inesperado: {str(e)}")
+    
+    # Close chatbot button
+    if st.button("❌ Pular por enquanto"):
+        st.session_state.show_profile_chatbot = False
+        st.rerun()
+
 # Results Display
 if st.session_state.current_analysis and st.session_state.current_analysis in st.session_state.analysis_results:
     result = st.session_state.analysis_results[st.session_state.current_analysis]
@@ -787,15 +867,22 @@ if st.session_state.current_analysis and st.session_state.current_analysis in st
                 </div>
                 """, unsafe_allow_html=True)
         
-        # Enhanced Tabs
-        tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+        # Enhanced Tabs with New Specialized Analyses
+        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11, tab12, tab13, tab14 = st.tabs([
             "📊 Resumo Executivo", 
             "🗺️ Mapa Interativo", 
-            "📈 Dashboard de Métricas", 
-            "💡 Insights & IA", 
-            "🔬 Análise Avançada",
-            "🌍 Geo-Visualizações",
-            "🚶‍♂️ Infraestrutura Urbana"
+            "📈 Dashboard Original", 
+            "🌿 Análise Ambiental",
+            "🚗 Mobilidade Avançada",
+            "🏗️ Infraestrutura Urbana", 
+            "🛡️ Segurança & Emergência",
+            "💼 Economia Local",
+            "✨ Características Especiais",
+            "🤖 Insights com IA",
+            "🚶‍♂️ Infraestrutura Pedestre",
+            "💰 Análise de Investimento",
+            "📈 Tendências Urbanas",
+            "👤 Recomendações Personalizadas"
         ])
         
         with tab1:
@@ -1072,40 +1159,7 @@ if st.session_state.current_analysis and st.session_state.current_analysis in st
                     </div>
                     """, unsafe_allow_html=True)
                 
-                # Enhanced lifestyle metrics
-                st.markdown('<h4 style="color: white; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 1rem; border-radius: 10px; text-align: center;">🎯 Métricas de Estilo de Vida</h4>', unsafe_allow_html=True)
-                
-                lifestyle_aspects = ['Vida Cotidiana', 'Entretenimento', 'Família', 'Profissional']
-                lifestyle_scores = [
-                    result.advanced_metrics.lifestyle.daily_life_score,
-                    result.advanced_metrics.lifestyle.entertainment_score,
-                    result.advanced_metrics.lifestyle.family_friendliness,
-                    result.advanced_metrics.lifestyle.professional_score
-                ]
-                
-                # Create radar chart using plotly.graph_objects
-                fig = go.Figure()
-                
-                fig.add_trace(go.Scatterpolar(
-                    r=lifestyle_scores,
-                    theta=lifestyle_aspects,
-                    fill='toself',
-                    name='Scores de Estilo de Vida',
-                    line_color='rgba(102, 126, 234, 0.8)',
-                    fillcolor='rgba(102, 126, 234, 0.3)'
-                ))
-                
-                fig.update_layout(
-                    polar=dict(
-                        radialaxis=dict(
-                            visible=True,
-                            range=[0, 100]
-                        )),
-                    showlegend=False,
-                    title="🎯 Radar de Estilo de Vida",
-                    height=400
-                )
-                st.plotly_chart(fig, use_container_width=True)
+
                 
                 # Enhanced other metrics
                 st.markdown('<h4 style="color: white; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 1rem; border-radius: 10px; text-align: center;">🌱 Indicadores Ambientais e Urbanos</h4>', unsafe_allow_html=True)
@@ -1166,7 +1220,7 @@ if st.session_state.current_analysis and st.session_state.current_analysis in st
                 
                 if available_maps:
                     selected_map = st.selectbox(
-                        "",
+                        "Selecione o tipo de mapa:",
                         options=list(available_maps.keys()),
                         format_func=lambda x: available_maps[x],
                         key="map_selector",
@@ -1199,7 +1253,677 @@ if st.session_state.current_analysis and st.session_state.current_analysis in st
                 </div>
                 """, unsafe_allow_html=True)
         
+        with tab4:
+            # Análise Ambiental
+            st.markdown('<h4 style="color: white; background: linear-gradient(135deg, #4CAF50 0%, #8BC34A 100%); padding: 1rem; border-radius: 10px; text-align: center;">🌿 Análise Ambiental Completa</h4>', unsafe_allow_html=True)
+            
+            if result.environmental_metrics:
+                env = result.environmental_metrics
+                
+                # Score geral ambiental
+                col1, col2, col3 = st.columns([1, 2, 1])
+                with col2:
+                    score = env.environmental_score
+                    color = get_score_color(score)
+                    st.markdown(f"""
+                    <div style="text-align: center; background: white; padding: 2rem; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+                        <h2 style="color: {color}; font-size: 3rem; margin: 0;">{score:.1f}</h2>
+                        <h3 style="color: #000; margin: 0.5rem 0;">Score Ambiental</h3>
+                        <h4 style="color: {color}; margin: 0;">{get_score_grade(score)}</h4>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Métricas detalhadas
+                col1, col2, col3, col4, col5 = st.columns(5)
+                
+                with col1:
+                    st.markdown(f"""
+                    <div class="custom-metric">
+                        <h3>🌳 Microclima</h3>
+                        <div class="value" style="color: {get_score_color(env.microclimate.overall_climate_score)};">{env.microclimate.overall_climate_score:.1f}</div>
+                        <div class="grade">Conforto Térmico</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col2:
+                    st.markdown(f"""
+                    <div class="custom-metric">
+                        <h3>💧 Recursos Hídricos</h3>
+                        <div class="value" style="color: {get_score_color(env.water_features.overall_water_score)};">{env.water_features.overall_water_score:.1f}</div>
+                        <div class="grade">Qualidade da Paisagem</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col3:
+                    st.markdown(f"""
+                    <div class="custom-metric">
+                        <h3>🌲 Espaços Verdes</h3>
+                        <div class="value" style="color: {get_score_color(env.green_space_index)};">{env.green_space_index:.1f}</div>
+                        <div class="grade">Índice Verde</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col4:
+                    st.markdown(f"""
+                    <div class="custom-metric">
+                        <h3>🌬️ Qualidade do Ar</h3>
+                        <div class="value" style="color: {get_score_color(env.air_quality_estimate)};">{env.air_quality_estimate:.1f}</div>
+                        <div class="grade">Estimativa</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col5:
+                    st.markdown(f"""
+                    <div class="custom-metric">
+                        <h3>🏝️ Ilha de Calor</h3>
+                        <div class="value" style="color: {get_score_color(100 - env.microclimate.heat_island_risk)};">{env.microclimate.heat_island_risk:.1f}%</div>
+                        <div class="grade">Risco</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Detalhes dos recursos hídricos
+                if env.water_features.water_features:
+                    st.markdown('<h5 style="background: #E8F5E8; padding: 0.8rem; border-radius: 8px;">💧 Recursos Hídricos Próximos</h5>')
+                    for feature in env.water_features.water_features[:5]:
+                        st.markdown(f"""
+                        <div style="background: #F0F8F0; padding: 0.5rem; border-radius: 5px; margin: 0.3rem 0;">
+                            <strong>{feature.name}</strong> - {feature.feature_type.title()} ({feature.distance:.0f}m)
+                        </div>
+                        """, unsafe_allow_html=True)
+            else:
+                st.error("❌ Dados ambientais não disponíveis para esta localização")
+        
+        with tab5:
+            # Mobilidade Avançada
+            st.markdown('<h4 style="color: white; background: linear-gradient(135deg, #2196F3 0%, #03A9F4 100%); padding: 1rem; border-radius: 10px; text-align: center;">🚗 Análise de Mobilidade Avançada</h4>', unsafe_allow_html=True)
+            
+            if result.mobility_metrics:
+                mob = result.mobility_metrics
+                
+                # Score geral de mobilidade
+                col1, col2, col3 = st.columns([1, 2, 1])
+                with col2:
+                    score = mob.overall_mobility_score
+                    color = get_score_color(score)
+                    st.markdown(f"""
+                    <div style="text-align: center; background: white; padding: 2rem; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+                        <h2 style="color: {color}; font-size: 3rem; margin: 0;">{score:.1f}</h2>
+                        <h3 style="color: #000; margin: 0.5rem 0;">Score de Mobilidade</h3>
+                        <h4 style="color: {color}; margin: 0;">{get_score_grade(score)}</h4>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Métricas de mobilidade
+                col1, col2, col3, col4, col5 = st.columns(5)
+                
+                with col1:
+                    st.markdown(f"""
+                    <div class="custom-metric">
+                        <h3>🚌 Transporte Público</h3>
+                        <div class="value" style="color: {get_score_color(mob.public_transport_metrics.overall_transport_score)};">{mob.public_transport_metrics.overall_transport_score:.1f}</div>
+                        <div class="grade">Cobertura</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col2:
+                    st.markdown(f"""
+                    <div class="custom-metric">
+                        <h3>🚲 Ciclabilidade</h3>
+                        <div class="value" style="color: {get_score_color(mob.bike_metrics.overall_bike_score)};">{mob.bike_metrics.overall_bike_score:.1f}</div>
+                        <div class="grade">Infraestrutura</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col3:
+                    st.markdown(f"""
+                    <div class="custom-metric">
+                        <h3>🅿️ Estacionamento</h3>
+                        <div class="value" style="color: {get_score_color(mob.parking_metrics.overall_parking_score)};">{mob.parking_metrics.overall_parking_score:.1f}</div>
+                        <div class="grade">Disponibilidade</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col4:
+                    st.markdown(f"""
+                    <div class="custom-metric">
+                        <h3>🌱 Sustentabilidade</h3>
+                        <div class="value" style="color: {get_score_color(mob.sustainable_mobility_score)};">{mob.sustainable_mobility_score:.1f}</div>
+                        <div class="grade">Mobilidade Verde</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col5:
+                    st.markdown(f"""
+                    <div class="custom-metric">
+                        <h3>🚗 Dependência</h3>
+                        <div class="value" style="color: {get_score_color(100 - mob.car_dependency_score)};">{mob.car_dependency_score:.1f}%</div>
+                        <div class="grade">Carros</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Detalhes do transporte público
+                if mob.public_transport_metrics.transport_stops:
+                    st.markdown('<h5 style="background: #E3F2FD; padding: 0.8rem; border-radius: 8px;">🚌 Paradas de Transporte Próximas</h5>')
+                    for stop in mob.public_transport_metrics.transport_stops[:5]:
+                        st.markdown(f"""
+                        <div style="background: #F0F4F8; padding: 0.5rem; border-radius: 5px; margin: 0.3rem 0;">
+                            <strong>{stop.name}</strong> - {stop.transport_type.title()} ({stop.distance:.0f}m)
+                        </div>
+                        """, unsafe_allow_html=True)
+            else:
+                st.error("❌ Dados de mobilidade não disponíveis para esta localização")
+        
+        with tab6:
+            # Infraestrutura Urbana
+            st.markdown('<h4 style="color: white; background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%); padding: 1rem; border-radius: 10px; text-align: center;">🏗️ Análise de Infraestrutura Urbana</h4>', unsafe_allow_html=True)
+            
+            if result.urban_metrics:
+                urban = result.urban_metrics
+                
+                # Score geral urbano
+                col1, col2, col3 = st.columns([1, 2, 1])
+                with col2:
+                    score = urban.livability_score
+                    color = get_score_color(score)
+                    st.markdown(f"""
+                    <div style="text-align: center; background: white; padding: 2rem; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+                        <h2 style="color: {color}; font-size: 3rem; margin: 0;">{score:.1f}</h2>
+                        <h3 style="color: #000; margin: 0.5rem 0;">Habitabilidade Urbana</h3>
+                        <h4 style="color: {color}; margin: 0;">{get_score_grade(score)}</h4>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Métricas urbanas
+                col1, col2, col3, col4, col5 = st.columns(5)
+                
+                with col1:
+                    st.markdown(f"""
+                    <div class="custom-metric">
+                        <h3>🏢 Densidade</h3>
+                        <div class="value" style="color: {get_score_color(min(urban.building_metrics.building_density/10, 100))};">{urban.building_metrics.building_density:.0f}</div>
+                        <div class="grade">Edif./km²</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col2:
+                    st.markdown(f"""
+                    <div class="custom-metric">
+                        <h3>🔊 Ruído</h3>
+                        <div class="value" style="color: {get_score_color(urban.noise_metrics.overall_noise_score)};">{urban.noise_metrics.estimated_noise_level:.0f}dB</div>
+                        <div class="grade">Nível Estimado</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col3:
+                    st.markdown(f"""
+                    <div class="custom-metric">
+                        <h3>⚡ Infraestrutura</h3>
+                        <div class="value" style="color: {get_score_color(urban.infrastructure_metrics.overall_infrastructure_score)};">{urban.infrastructure_metrics.overall_infrastructure_score:.1f}</div>
+                        <div class="grade">Qualidade</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col4:
+                    st.markdown(f"""
+                    <div class="custom-metric">
+                        <h3>🌆 Desenvolvimento</h3>
+                        <div class="value" style="color: {get_score_color(urban.urban_development_score)};">{urban.urban_development_score:.1f}</div>
+                        <div class="grade">Urbano</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col5:
+                    st.markdown(f"""
+                    <div class="custom-metric">
+                        <h3>🚀 Potencial</h3>
+                        <div class="value" style="color: {get_score_color(urban.future_development_potential)};">{urban.future_development_potential:.1f}</div>
+                        <div class="grade">Futuro</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Análise de ruído
+                st.markdown('<h5 style="background: #FFF3E0; padding: 0.8rem; border-radius: 8px;">🔊 Análise de Ruído Urbano</h5>')
+                noise_zones = urban.noise_metrics.noise_zones
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    st.markdown(f"""
+                    <div style="background: #E8F5E8; padding: 1rem; border-radius: 8px; text-align: center;">
+                        <h4>🔇 Zona Silenciosa</h4>
+                        <h3>{noise_zones['quiet']:.1f}%</h3>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col2:
+                    st.markdown(f"""
+                    <div style="background: #FFF8E1; padding: 1rem; border-radius: 8px; text-align: center;">
+                        <h4>🔉 Zona Moderada</h4>
+                        <h3>{noise_zones['moderate']:.1f}%</h3>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col3:
+                    st.markdown(f"""
+                    <div style="background: #FFEBEE; padding: 1rem; border-radius: 8px; text-align: center;">
+                        <h4>🔊 Zona Ruidosa</h4>
+                        <h3>{noise_zones['noisy']:.1f}%</h3>
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.error("❌ Dados de infraestrutura urbana não disponíveis para esta localização")
+        
         with tab7:
+            # Segurança & Emergência
+            st.markdown('<h4 style="color: white; background: linear-gradient(135deg, #F44336 0%, #E91E63 100%); padding: 1rem; border-radius: 10px; text-align: center;">🛡️ Análise de Segurança & Emergência</h4>', unsafe_allow_html=True)
+            
+            if result.safety_metrics:
+                safety = result.safety_metrics
+                
+                # Score geral de segurança
+                col1, col2, col3 = st.columns([1, 2, 1])
+                with col2:
+                    score = safety.overall_safety_score
+                    color = get_score_color(score)
+                    st.markdown(f"""
+                    <div style="text-align: center; background: white; padding: 2rem; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+                        <h2 style="color: {color}; font-size: 3rem; margin: 0;">{score:.1f}</h2>
+                        <h3 style="color: #000; margin: 0.5rem 0;">Score de Segurança</h3>
+                        <h4 style="color: {color}; margin: 0;">{get_score_grade(score)}</h4>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Métricas de segurança
+                col1, col2, col3, col4, col5 = st.columns(5)
+                
+                with col1:
+                    st.markdown(f"""
+                    <div class="custom-metric">
+                        <h3>🚨 Emergência</h3>
+                        <div class="value" style="color: {get_score_color(safety.emergency_metrics.overall_emergency_score)};">{safety.emergency_metrics.overall_emergency_score:.1f}</div>
+                        <div class="grade">Cobertura</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col2:
+                    st.markdown(f"""
+                    <div class="custom-metric">
+                        <h3>🔦 Iluminação</h3>
+                        <div class="value" style="color: {get_score_color(safety.crime_prevention_metrics.lighting_coverage)};">{safety.crime_prevention_metrics.lighting_coverage:.1f}</div>
+                        <div class="grade">Cobertura</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col3:
+                    st.markdown(f"""
+                    <div class="custom-metric">
+                        <h3>👁️ Vigilância</h3>
+                        <div class="value" style="color: {get_score_color(safety.crime_prevention_metrics.surveillance_coverage)};">{safety.crime_prevention_metrics.surveillance_coverage:.1f}</div>
+                        <div class="grade">Câmeras</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col4:
+                    st.markdown(f"""
+                    <div class="custom-metric">
+                        <h3>👮 Polícia</h3>
+                        <div class="value" style="color: {get_score_color(safety.crime_prevention_metrics.police_presence)};">{safety.crime_prevention_metrics.police_presence:.1f}</div>
+                        <div class="grade">Presença</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col5:
+                    st.markdown(f"""
+                    <div class="custom-metric">
+                        <h3>👁️‍🗨️ Visibilidade</h3>
+                        <div class="value" style="color: {get_score_color(safety.crime_prevention_metrics.visibility_score)};">{safety.crime_prevention_metrics.visibility_score:.1f}</div>
+                        <div class="grade">Urbana</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Serviços de emergência próximos
+                if safety.emergency_metrics.emergency_services:
+                    st.markdown('<h5 style="background: #FFEBEE; padding: 0.8rem; border-radius: 8px;">🚨 Serviços de Emergência Próximos</h5>')
+                    for service in safety.emergency_metrics.emergency_services[:5]:
+                        icon = "🏥" if service.service_type == "hospital" else "👮" if service.service_type == "police" else "🚒"
+                        st.markdown(f"""
+                        <div style="background: #F8F8F8; padding: 0.5rem; border-radius: 5px; margin: 0.3rem 0;">
+                            {icon} <strong>{service.name}</strong> - {service.service_type.title()} ({service.distance:.0f}m) - ⏱️ {service.response_time_estimate:.1f}min
+                        </div>
+                        """, unsafe_allow_html=True)
+                
+                # Recomendações de segurança
+                if safety.safety_recommendations:
+                    st.markdown('<h5 style="background: #FFEBEE; padding: 0.8rem; border-radius: 8px;">💡 Recomendações de Segurança</h5>')
+                    for i, rec in enumerate(safety.safety_recommendations, 1):
+                        st.markdown(f"""
+                        <div style="background: #FFF8F8; padding: 0.5rem; border-radius: 5px; margin: 0.3rem 0; border-left: 3px solid #F44336;">
+                            <strong>{i}.</strong> {rec}
+                        </div>
+                        """, unsafe_allow_html=True)
+            else:
+                st.error("❌ Dados de segurança não disponíveis para esta localização")
+        
+
+        
+        with tab8:
+            # Economia Local
+            st.markdown('<h4 style="color: white; background: linear-gradient(135deg, #607D8B 0%, #455A64 100%); padding: 1rem; border-radius: 10px; text-align: center;">💼 Análise de Economia Local</h4>', unsafe_allow_html=True)
+            
+            if result.economy_metrics:
+                economy = result.economy_metrics
+                
+                # Score geral de economia
+                col1, col2, col3 = st.columns([1, 2, 1])
+                with col2:
+                    score = economy.overall_local_economy_score
+                    color = get_score_color(score)
+                    st.markdown(f"""
+                    <div style="text-align: center; background: white; padding: 2rem; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+                        <h2 style="color: {color}; font-size: 3rem; margin: 0;">{score:.1f}</h2>
+                        <h3 style="color: #000; margin: 0.5rem 0;">Economia Local</h3>
+                        <h4 style="color: {color}; margin: 0;">{get_score_grade(score)}</h4>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Métricas econômicas
+                col1, col2, col3, col4, col5 = st.columns(5)
+                
+                with col1:
+                    st.markdown(f"""
+                    <div class="custom-metric">
+                        <h3>🏪 Vitalidade</h3>
+                        <div class="value" style="color: {get_score_color(economy.economy_vitality_metrics.overall_economy_score)};">{economy.economy_vitality_metrics.overall_economy_score:.1f}</div>
+                        <div class="grade">Negócios</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col2:
+                    st.markdown(f"""
+                    <div class="custom-metric">
+                        <h3>🎨 Cultura</h3>
+                        <div class="value" style="color: {get_score_color(economy.cultural_richness_metrics.overall_cultural_score)};">{economy.cultural_richness_metrics.overall_cultural_score:.1f}</div>
+                        <div class="grade">Riqueza Cultural</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col3:
+                    st.markdown(f"""
+                    <div class="custom-metric">
+                        <h3>🛒 Varejo</h3>
+                        <div class="value" style="color: {get_score_color(economy.retail_accessibility_metrics.overall_retail_score)};">{economy.retail_accessibility_metrics.overall_retail_score:.1f}</div>
+                        <div class="grade">Acessibilidade</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col4:
+                    st.markdown(f"""
+                    <div class="custom-metric">
+                        <h3>🏘️ Caráter Local</h3>
+                        <div class="value" style="color: {get_score_color(economy.local_character_score)};">{economy.local_character_score:.1f}</div>
+                        <div class="grade">Identidade</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col5:
+                    st.markdown(f"""
+                    <div class="custom-metric">
+                        <h3>💪 Resiliência</h3>
+                        <div class="value" style="color: {get_score_color(economy.economic_resilience_score)};">{economy.economic_resilience_score:.1f}</div>
+                        <div class="grade">Econômica</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Estabelecimentos comerciais
+                if economy.economy_vitality_metrics.economic_establishments:
+                    st.markdown('<h5 style="background: #ECEFF1; padding: 0.8rem; border-radius: 8px;">🏪 Estabelecimentos Comerciais</h5>')
+                    establishments = economy.economy_vitality_metrics.economic_establishments[:5]
+                    for est in establishments:
+                        icon = "🛒" if est.business_type == "shop" else "🏢" if est.business_type == "office" else "🔨"
+                        st.markdown(f"""
+                        <div style="background: #F5F5F5; padding: 0.5rem; border-radius: 5px; margin: 0.3rem 0;">
+                            {icon} <strong>{est.name}</strong> - {est.business_category.title()} ({est.distance:.0f}m)
+                        </div>
+                        """, unsafe_allow_html=True)
+                
+                # Locais culturais
+                if economy.cultural_richness_metrics.cultural_venues:
+                    st.markdown('<h5 style="background: #ECEFF1; padding: 0.8rem; border-radius: 8px;">🎨 Locais Culturais</h5>')
+                    venues = economy.cultural_richness_metrics.cultural_venues[:5]
+                    for venue in venues:
+                        icon = "🏛️" if venue.venue_type == "museum" else "🎭" if venue.venue_type == "theatre" else "🖼️"
+                        st.markdown(f"""
+                        <div style="background: #F5F5F5; padding: 0.5rem; border-radius: 5px; margin: 0.3rem 0;">
+                            {icon} <strong>{venue.name}</strong> - {venue.venue_type.title()} ({venue.distance:.0f}m)
+                        </div>
+                        """, unsafe_allow_html=True)
+            else:
+                st.error("❌ Dados de economia local não disponíveis para esta localização")
+        
+        with tab9:
+            # Características Especiais
+            st.markdown('<h4 style="color: white; background: linear-gradient(135deg, #795548 0%, #5D4037 100%); padding: 1rem; border-radius: 10px; text-align: center;">✨ Características Especiais</h4>', unsafe_allow_html=True)
+            
+            if result.special_features_metrics:
+                special = result.special_features_metrics
+                
+                # Score geral de características especiais
+                col1, col2, col3 = st.columns([1, 2, 1])
+                with col2:
+                    score = special.overall_special_features_score
+                    color = get_score_color(score)
+                    st.markdown(f"""
+                    <div style="text-align: center; background: white; padding: 2rem; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+                        <h2 style="color: {color}; font-size: 3rem; margin: 0;">{score:.1f}</h2>
+                        <h3 style="color: #000; margin: 0.5rem 0;">Características Especiais</h3>
+                        <h4 style="color: {color}; margin: 0;">{get_score_grade(score)}</h4>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Métricas especiais
+                col1, col2, col3, col4, col5 = st.columns(5)
+                
+                with col1:
+                    st.markdown(f"""
+                    <div class="custom-metric">
+                        <h3>💻 Digital</h3>
+                        <div class="value" style="color: {get_score_color(special.digital_infrastructure_metrics.overall_digital_score)};">{special.digital_infrastructure_metrics.overall_digital_score:.1f}</div>
+                        <div class="grade">Infraestrutura</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col2:
+                    st.markdown(f"""
+                    <div class="custom-metric">
+                        <h3>♿ Acessibilidade</h3>
+                        <div class="value" style="color: {get_score_color(special.universal_accessibility_metrics.overall_accessibility_score)};">{special.universal_accessibility_metrics.overall_accessibility_score:.1f}</div>
+                        <div class="grade">Universal</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col3:
+                    st.markdown(f"""
+                    <div class="custom-metric">
+                        <h3>🌙 Vida Noturna</h3>
+                        <div class="value" style="color: {get_score_color(special.nightlife_metrics.overall_nightlife_score)};">{special.nightlife_metrics.overall_nightlife_score:.1f}</div>
+                        <div class="grade">& 24h</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col4:
+                    st.markdown(f"""
+                    <div class="custom-metric">
+                        <h3>🚀 Inovação</h3>
+                        <div class="value" style="color: {get_score_color(special.innovation_index)};">{special.innovation_index:.1f}</div>
+                        <div class="grade">Índice</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col5:
+                    st.markdown(f"""
+                    <div class="custom-metric">
+                        <h3>🤝 Inclusão Social</h3>
+                        <div class="value" style="color: {get_score_color(special.social_inclusion_score)};">{special.social_inclusion_score:.1f}</div>
+                        <div class="grade">Score</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Infraestrutura digital
+                if special.digital_infrastructure_metrics.digital_infrastructure:
+                    st.markdown('<h5 style="background: #EFEBE9; padding: 0.8rem; border-radius: 8px;">💻 Infraestrutura Digital</h5>')
+                    digital_infra = special.digital_infrastructure_metrics.digital_infrastructure[:5]
+                    for infra in digital_infra:
+                        icon = "📶" if infra.infrastructure_type == "wifi_hotspot" else "☕" if infra.infrastructure_type == "internet_cafe" else "🏢"
+                        st.markdown(f"""
+                        <div style="background: #F3F0F0; padding: 0.5rem; border-radius: 5px; margin: 0.3rem 0;">
+                            {icon} <strong>{infra.name}</strong> - {infra.infrastructure_type.replace('_', ' ').title()} ({infra.distance:.0f}m)
+                        </div>
+                        """, unsafe_allow_html=True)
+                
+                # Vida noturna
+                if special.nightlife_metrics.nightlife_venues:
+                    st.markdown('<h5 style="background: #EFEBE9; padding: 0.8rem; border-radius: 8px;">🌙 Vida Noturna & Serviços 24h</h5>')
+                    nightlife = special.nightlife_metrics.nightlife_venues[:5]
+                    for venue in nightlife:
+                        icon = "🍺" if venue.venue_type == "bar" else "🏪" if "24h" in venue.venue_type else "🌙"
+                        st.markdown(f"""
+                        <div style="background: #F3F0F0; padding: 0.5rem; border-radius: 5px; margin: 0.3rem 0;">
+                            {icon} <strong>{venue.name}</strong> - {venue.venue_type.replace('_', ' ').title()} ({venue.distance:.0f}m)
+                        </div>
+                        """, unsafe_allow_html=True)
+            else:
+                st.error("❌ Dados de características especiais não disponíveis para esta localização")
+        
+        with tab10:
+            # Insights com IA
+            st.markdown('<h4 style="color: white; background: linear-gradient(135deg, #FF6B35 0%, #F7931E 100%); padding: 1rem; border-radius: 10px; text-align: center;">🤖 Insights Avançados com Inteligência Artificial</h4>', unsafe_allow_html=True)
+            
+            if result.insights:
+                insights = result.insights
+                
+                # Resumo Executivo com IA
+                st.markdown('<h5 style="background: #FFF3E0; padding: 0.8rem; border-radius: 8px; color: #E65100;">🎯 Análise Executiva da IA</h5>')
+                st.markdown(f"""
+                <div style="background: linear-gradient(135deg, #FFF8E1 0%, #FFF3E0 100%); padding: 1.5rem; border-radius: 15px; border-left: 5px solid #FF6B35; margin: 1rem 0;">
+                    <h4 style="color: #E65100; margin-top: 0;">📋 Resumo Inteligente</h4>
+                    <p style="color: #333; font-size: 1.1rem; line-height: 1.6;">{insights.executive_summary}</p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Análise Detalhada de Pontos Fortes
+                st.markdown('<h5 style="background: #E8F5E8; padding: 0.8rem; border-radius: 8px; color: #2E7D32;">✅ Análise de Pontos Fortes</h5>')
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    for i, strength in enumerate(insights.strengths[:3], 1):
+                        st.markdown(f"""
+                        <div style="background: linear-gradient(135deg, #E8F5E8 0%, #C8E6C9 100%); padding: 1rem; border-radius: 12px; margin: 0.8rem 0; border-left: 4px solid #4CAF50;">
+                            <h6 style="color: #2E7D32; margin: 0; font-weight: bold;">💪 Força #{i}</h6>
+                            <p style="color: #1B5E20; margin: 0.5rem 0 0 0; font-size: 0.95rem;">{strength}</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                
+                with col2:
+                    for i, strength in enumerate(insights.strengths[3:6], 4):
+                        st.markdown(f"""
+                        <div style="background: linear-gradient(135deg, #E8F5E8 0%, #C8E6C9 100%); padding: 1rem; border-radius: 12px; margin: 0.8rem 0; border-left: 4px solid #4CAF50;">
+                            <h6 style="color: #2E7D32; margin: 0; font-weight: bold;">💪 Força #{i}</h6>
+                            <p style="color: #1B5E20; margin: 0.5rem 0 0 0; font-size: 0.95rem;">{strength}</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                
+                # Análise Detalhada de Pontos de Atenção
+                st.markdown('<h5 style="background: #FFEBEE; padding: 0.8rem; border-radius: 8px; color: #C62828;">⚠️ Análise de Pontos de Atenção</h5>')
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    for i, concern in enumerate(insights.concerns[:3], 1):
+                        st.markdown(f"""
+                        <div style="background: linear-gradient(135deg, #FFEBEE 0%, #FFCDD2 100%); padding: 1rem; border-radius: 12px; margin: 0.8rem 0; border-left: 4px solid #F44336;">
+                            <h6 style="color: #C62828; margin: 0; font-weight: bold;">🚨 Atenção #{i}</h6>
+                            <p style="color: #B71C1C; margin: 0.5rem 0 0 0; font-size: 0.95rem;">{concern}</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                
+                with col2:
+                    for i, concern in enumerate(insights.concerns[3:6], 4):
+                        st.markdown(f"""
+                        <div style="background: linear-gradient(135deg, #FFEBEE 0%, #FFCDD2 100%); padding: 1rem; border-radius: 12px; margin: 0.8rem 0; border-left: 4px solid #F44336;">
+                            <h6 style="color: #C62828; margin: 0; font-weight: bold;">🚨 Atenção #{i}</h6>
+                            <p style="color: #B71C1C; margin: 0.5rem 0 0 0; font-size: 0.95rem;">{concern}</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                
+                # Perfil Ideal do Morador com IA
+                st.markdown('<h5 style="background: #E3F2FD; padding: 0.8rem; border-radius: 8px; color: #1565C0;">👥 Perfil Ideal do Morador (IA)</h5>')
+                st.markdown(f"""
+                <div style="background: linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%); padding: 1.5rem; border-radius: 15px; border-left: 5px solid #2196F3; margin: 1rem 0;">
+                    <h4 style="color: #1565C0; margin-top: 0;">🎯 Recomendação Inteligente</h4>
+                    <p style="color: #0D47A1; font-size: 1.1rem; line-height: 1.6; font-weight: 500;">{insights.ideal_resident_profile}</p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Metodologia da IA
+                st.markdown('<h5 style="background: #F3E5F5; padding: 0.8rem; border-radius: 8px; color: #7B1FA2;">🧠 Como a IA Analisa</h5>', unsafe_allow_html=True)
+                
+                st.markdown("""
+                <div style="background: linear-gradient(135deg, #F3E5F5 0%, #E1BEE7 100%); padding: 1.5rem; border-radius: 15px; border-left: 5px solid #9C27B0;">
+                    <h4 style="color: #7B1FA2; margin-top: 0;">🔬 Metodologia UrbanSight AI</h4>
+                    <p style="color: #4A148C; margin-bottom: 1rem;">Nossa IA utiliza análise avançada de dados urbanos para gerar insights personalizados:</p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Criar os cards usando colunas do Streamlit em vez de CSS Grid
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.markdown("""
+                    <div style="background: rgba(255,255,255,0.9); padding: 1rem; border-radius: 10px; margin-bottom: 1rem; border-left: 3px solid #7B1FA2;">
+                        <h6 style="color: #7B1FA2; margin: 0 0 0.5rem 0;">🔍 Análise Multimodal</h6>
+                        <p style="color: #4A148C; margin: 0; font-size: 0.9rem;">Combina dados de mobilidade, segurança, meio ambiente e economia</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    st.markdown("""
+                    <div style="background: rgba(255,255,255,0.9); padding: 1rem; border-radius: 10px; margin-bottom: 1rem; border-left: 3px solid #7B1FA2;">
+                        <h6 style="color: #7B1FA2; margin: 0 0 0.5rem 0;">🎯 Personalização</h6>
+                        <p style="color: #4A148C; margin: 0; font-size: 0.9rem;">Adapta recomendações baseadas no contexto urbano específico</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col2:
+                    st.markdown("""
+                    <div style="background: rgba(255,255,255,0.9); padding: 1rem; border-radius: 10px; margin-bottom: 1rem; border-left: 3px solid #7B1FA2;">
+                        <h6 style="color: #7B1FA2; margin: 0 0 0.5rem 0;">📊 Processamento OpenStreetMap</h6>
+                        <p style="color: #4A148C; margin: 0; font-size: 0.9rem;">Extrai padrões de 200+ pontos de interesse georreferenciados</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    st.markdown("""
+                    <div style="background: rgba(255,255,255,0.9); padding: 1rem; border-radius: 10px; margin-bottom: 1rem; border-left: 3px solid #7B1FA2;">
+                        <h6 style="color: #7B1FA2; margin: 0 0 0.5rem 0;">🚀 Tempo Real</h6>
+                        <p style="color: #4A148C; margin: 0; font-size: 0.9rem;">Análise instantânea com dados atualizados do OpenStreetMap</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+            else:
+                st.markdown("""
+                <div style="background: linear-gradient(135deg, #FFEBEE 0%, #FFCDD2 100%); padding: 2rem; border-radius: 15px; text-align: center; border-left: 5px solid #F44336;">
+                    <h3 style="color: #C62828; margin: 0 0 1rem 0;">🤖 IA Temporariamente Indisponível</h3>
+                    <p style="color: #B71C1C; font-size: 1.1rem; margin: 0;">Os insights com inteligência artificial não estão disponíveis no momento.</p>
+                    
+                    <h5 style="color: #C62828; margin: 1.5rem 0 0.5rem 0;">🔍 Possíveis Motivos:</h5>
+                    <ul style="color: #B71C1C; text-align: left; max-width: 500px; margin: 0 auto;">
+                        <li><strong>Configuração de API:</strong> Chave OpenAI não configurada</li>
+                        <li><strong>Limite de Uso:</strong> Cota da API temporariamente esgotada</li>
+                        <li><strong>Conectividade:</strong> Problemas de rede temporários</li>
+                    </ul>
+                    
+                    <h5 style="color: #C62828; margin: 1.5rem 0 0.5rem 0;">💡 Solução:</h5>
+                    <p style="color: #B71C1C; margin: 0;">Configure sua chave da API OpenAI no arquivo de configuração para ativar os insights avançados com IA.</p>
+                </div>
+                """, unsafe_allow_html=True)
+        
+        with tab11:
             # Enhanced Pedestrian Infrastructure
             st.markdown('<h4 style="color: white; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 1rem; border-radius: 10px; text-align: center;">🚶‍♂️ Centro de Análise de Infraestrutura Pedestre</h4>', unsafe_allow_html=True)
             
@@ -1314,6 +2038,416 @@ if st.session_state.current_analysis and st.session_state.current_analysis in st
                     </ul>
                 </div>
                 """, unsafe_allow_html=True)
+        
+        with tab12:
+            # Análise de Investimento
+            st.markdown('<h4 style="color: white; background: linear-gradient(135deg, #4CAF50 0%, #8BC34A 100%); padding: 1rem; border-radius: 10px; text-align: center;">💰 Análise Completa de Investimento Imobiliário</h4>', unsafe_allow_html=True)
+            
+            if result.investment_analysis:
+                investment = result.investment_analysis
+                
+                # Score geral de investimento
+                col1, col2, col3 = st.columns([1, 2, 1])
+                with col2:
+                    score = investment.metrics.overall_investment_score
+                    color = get_score_color(score)
+                    st.markdown(f"""
+                    <div style="text-align: center; background: white; padding: 2rem; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+                        <h2 style="color: {color}; font-size: 3rem; margin: 0;">{score:.1f}</h2>
+                        <h3 style="color: #000; margin: 0.5rem 0;">Score de Investimento</h3>
+                        <h4 style="color: {color}; margin: 0;">{get_score_grade(score)}</h4>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Recomendação principal
+                recommendation_colors = {
+                    "BUY": "#4CAF50",
+                    "HOLD": "#FF9800", 
+                    "AVALIAR": "#F44336"
+                }
+                rec_color = recommendation_colors.get(investment.recommendations.buy_hold_sell, "#666")
+                
+                st.markdown(f"""
+                <div style="text-align: center; background: {rec_color}; color: white; padding: 1.5rem; border-radius: 15px; margin: 1rem 0;">
+                    <h2>🎯 Recomendação: {investment.recommendations.buy_hold_sell}</h2>
+                    <h4>{investment.recommendations.optimal_timeline}</h4>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Métricas detalhadas
+                col1, col2, col3, col4, col5 = st.columns(5)
+                
+                with col1:
+                    st.markdown(f"""
+                    <div class="custom-metric">
+                        <h3>🎯 ROI Potential</h3>
+                        <div class="value" style="color: {get_score_color(investment.metrics.roi_potential)};">{investment.metrics.roi_potential:.1f}</div>
+                        <div class="grade">Score</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col2:
+                    st.markdown(f"""
+                    <div class="custom-metric">
+                        <h3>📈 Valorização</h3>
+                        <div class="value" style="color: {get_score_color(investment.metrics.appreciation_forecast * 10)};">{investment.metrics.appreciation_forecast:.1f}%</div>
+                        <div class="grade">Anual</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col3:
+                    st.markdown(f"""
+                    <div class="custom-metric">
+                        <h3>🏠 Rental Yield</h3>
+                        <div class="value" style="color: {get_score_color(investment.metrics.rental_yield_estimate * 10)};">{investment.metrics.rental_yield_estimate:.1f}%</div>
+                        <div class="grade">Anual</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col4:
+                    st.markdown(f"""
+                    <div class="custom-metric">
+                        <h3>💧 Liquidez</h3>
+                        <div class="value" style="color: {get_score_color(investment.metrics.liquidity_score)};">{investment.metrics.liquidity_score:.1f}</div>
+                        <div class="grade">Score</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col5:
+                    st.markdown(f"""
+                    <div class="custom-metric">
+                        <h3>⚠️ Risco</h3>
+                        <div class="value" style="color: {get_score_color(100 - investment.metrics.risk_score)};">{investment.metrics.risk_score:.1f}</div>
+                        <div class="grade">Score</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Análise de mercado
+                st.markdown('<h5 style="background: #E8F5E8; padding: 0.8rem; border-radius: 8px;">📊 Análise de Mercado</h5>')
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.markdown(f"""
+                    <div style="background: #F0F8F0; padding: 1rem; border-radius: 8px;">
+                        <h6><strong>🏗️ Tendência do Bairro:</strong></h6>
+                        <p>{investment.market_comparison.neighborhood_growth_trend}</p>
+                        
+                        <h6><strong>📈 Saturação do Mercado:</strong></h6>
+                        <p>{investment.market_comparison.market_saturation_level}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col2:
+                    st.markdown('<h6><strong>🎯 Vantagens Competitivas:</strong></h6>', unsafe_allow_html=True)
+                    for advantage in investment.market_comparison.competitive_advantage:
+                        st.markdown(f"• {advantage}")
+                
+                # Recomendações de financiamento
+                st.markdown('<h5 style="background: #E3F2FD; padding: 0.8rem; border-radius: 8px;">💳 Estratégias de Financiamento</h5>')
+                for suggestion in investment.recommendations.financing_suggestions:
+                    st.markdown(f"""
+                    <div style="background: #F0F4F8; padding: 0.5rem; border-radius: 5px; margin: 0.3rem 0;">
+                        💡 {suggestion}
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Fatores de risco
+                st.markdown('<h5 style="background: #FFEBEE; padding: 0.8rem; border-radius: 8px;">⚠️ Fatores de Risco</h5>')
+                for risk in investment.risk_factors:
+                    st.markdown(f"""
+                    <div style="background: #FFEBEE; padding: 0.5rem; border-radius: 5px; margin: 0.3rem 0; border-left: 3px solid #F44336;">
+                        🚨 {risk}
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Insights de IA
+                if investment.ai_insights:
+                    st.markdown('<h5 style="background: #F3E5F5; padding: 0.8rem; border-radius: 8px;">🤖 Análise de IA</h5>')
+                    st.markdown(f"""
+                    <div style="background: #F8F4F9; padding: 1rem; border-radius: 8px; border-left: 4px solid #9C27B0;">
+                        {investment.ai_insights}
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.error("❌ Dados de análise de investimento não disponíveis para esta localização")
+        
+        with tab13:
+            # Tendências Urbanas
+            st.markdown('<h4 style="color: white; background: linear-gradient(135deg, #9C27B0 0%, #673AB7 100%); padding: 1rem; border-radius: 10px; text-align: center;">📈 Análise de Tendências Urbanas</h4>', unsafe_allow_html=True)
+            
+            if result.urban_trends:
+                trends = result.urban_trends
+                
+                # Padrão de desenvolvimento
+                pattern_colors = {
+                    "Gentrification": "#4CAF50",
+                    "Emerging": "#FF9800",
+                    "Stable": "#2196F3",
+                    "Underdeveloped": "#9E9E9E"
+                }
+                pattern_color = pattern_colors.get(trends.development_pattern.pattern_type, "#666")
+                
+                st.markdown(f"""
+                <div style="text-align: center; background: {pattern_color}; color: white; padding: 2rem; border-radius: 20px; margin: 1rem 0;">
+                    <h2>🏗️ Padrão: {trends.development_pattern.pattern_type}</h2>
+                    <h4>⏱️ {trends.development_pattern.timeline_estimate}</h4>
+                    <p>Confiança: {trends.development_pattern.confidence_level:.0f}%</p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Indicadores de crescimento
+                col1, col2, col3, col4 = st.columns(4)
+                
+                with col1:
+                    st.markdown(f"""
+                    <div class="custom-metric">
+                        <h3>🏪 Crescimento Comercial</h3>
+                        <div class="value" style="color: {get_score_color(trends.growth_indicators.commercial_growth_rate)};">{trends.growth_indicators.commercial_growth_rate:.1f}</div>
+                        <div class="grade">Score</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col2:
+                    st.markdown(f"""
+                    <div class="custom-metric">
+                        <h3>🏗️ Infraestrutura</h3>
+                        <div class="value" style="color: {get_score_color(trends.growth_indicators.infrastructure_development)};">{trends.growth_indicators.infrastructure_development:.1f}</div>
+                        <div class="grade">Desenvolvimento</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col3:
+                    st.markdown(f"""
+                    <div class="custom-metric">
+                        <h3>🏠 Apelo Residencial</h3>
+                        <div class="value" style="color: {get_score_color(trends.growth_indicators.residential_appeal)};">{trends.growth_indicators.residential_appeal:.1f}</div>
+                        <div class="grade">Score</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col4:
+                    st.markdown(f"""
+                    <div class="custom-metric">
+                        <h3>🚀 Inovação</h3>
+                        <div class="value" style="color: {get_score_color(trends.growth_indicators.innovation_index)};">{trends.growth_indicators.innovation_index:.1f}</div>
+                        <div class="grade">Índice</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Previsões futuras
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.markdown('<h5 style="background: #E3F2FD; padding: 0.8rem; border-radius: 8px;">🔮 Projeção 5 Anos</h5>')
+                    st.markdown(f"""
+                    <div style="background: #F0F4F8; padding: 1rem; border-radius: 8px;">
+                        {trends.future_predictions.five_year_outlook}
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col2:
+                    st.markdown('<h5 style="background: #E8F5E8; padding: 0.8rem; border-radius: 8px;">🌟 Projeção 10 Anos</h5>')
+                    st.markdown(f"""
+                    <div style="background: #F0F8F0; padding: 1rem; border-radius: 8px;">
+                        {trends.future_predictions.ten_year_projection}
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Oportunidades emergentes
+                st.markdown('<h5 style="background: #FFF3E0; padding: 0.8rem; border-radius: 8px;">🌟 Oportunidades Emergentes</h5>')
+                for opportunity in trends.future_predictions.emerging_opportunities:
+                    st.markdown(f"""
+                    <div style="background: #FFF8F0; padding: 0.5rem; border-radius: 5px; margin: 0.3rem 0; border-left: 3px solid #FF9800;">
+                        🚀 {opportunity}
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Desafios potenciais
+                st.markdown('<h5 style="background: #FFEBEE; padding: 0.8rem; border-radius: 8px;">⚠️ Desafios Potenciais</h5>')
+                for challenge in trends.future_predictions.potential_challenges:
+                    st.markdown(f"""
+                    <div style="background: #FFF0F0; padding: 0.5rem; border-radius: 5px; margin: 0.3rem 0; border-left: 3px solid #F44336;">
+                        🚧 {challenge}
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Janelas de investimento
+                st.markdown('<h5 style="background: #E8F5E8; padding: 0.8rem; border-radius: 8px;">💰 Janelas de Investimento</h5>')
+                for window in trends.future_predictions.investment_windows:
+                    st.markdown(f"""
+                    <div style="background: #F0F8F0; padding: 0.5rem; border-radius: 5px; margin: 0.3rem 0; border-left: 3px solid #4CAF50;">
+                        💎 {window}
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Análise de IA
+                if trends.ai_analysis:
+                    st.markdown('<h5 style="background: #F3E5F5; padding: 0.8rem; border-radius: 8px;">🤖 Análise Especializada de IA</h5>')
+                    st.markdown(f"""
+                    <div style="background: #F8F4F9; padding: 1rem; border-radius: 8px; border-left: 4px solid #9C27B0;">
+                        {trends.ai_analysis}
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Resumo das tendências
+                st.markdown('<h5 style="background: #ECEFF1; padding: 0.8rem; border-radius: 8px;">📋 Resumo Executivo</h5>')
+                st.markdown(f"""
+                <div style="background: #F5F5F5; padding: 1rem; border-radius: 8px; white-space: pre-line;">
+                {trends.trend_summary}
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.error("❌ Dados de tendências urbanas não disponíveis para esta localização")
+        
+        with tab14:
+            # Recomendações Personalizadas
+            st.markdown('<h4 style="color: white; background: linear-gradient(135deg, #FF6B35 0%, #F7931E 100%); padding: 1rem; border-radius: 10px; text-align: center;">👤 Recomendações Personalizadas</h4>', unsafe_allow_html=True)
+            
+            if st.session_state.user_profile and st.session_state.user_profile.success:
+                profile = st.session_state.user_profile.user_profile
+                
+                # Exibir resumo do perfil
+                st.markdown('<h5 style="background: #E3F2FD; padding: 0.8rem; border-radius: 8px;">👤 Seu Perfil</h5>')
+                st.markdown(f"""
+                <div style="background: #F0F4F8; padding: 1rem; border-radius: 8px; white-space: pre-line;">
+                {st.session_state.user_profile.profile_summary}
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Calcular compatibilidade personalizada
+                compatibility_score = 0
+                if hasattr(result.metrics, 'total_score'):
+                    # Aplicar pesos personalizados
+                    weights = profile.compatibility_weights
+                    compatibility_score = (
+                        getattr(result.metrics, 'safety_score', 70) * weights.get('safety_score', 0.1) +
+                        getattr(result.metrics, 'accessibility_score', 70) * weights.get('accessibility_score', 0.15) +
+                        getattr(result.metrics, 'convenience_score', 70) * weights.get('convenience_score', 0.15) +
+                        getattr(result.metrics.walk_score, 'overall_score', 70) * weights.get('walk_score', 0.15) +
+                        getattr(result.metrics, 'quality_of_life_score', 70) * weights.get('quality_of_life_score', 0.15) +
+                        getattr(result.metrics, 'total_score', 70) * weights.get('total_score', 0.3)
+                    )
+                
+                # Score de compatibilidade personalizado
+                col1, col2, col3 = st.columns([1, 2, 1])
+                with col2:
+                    color = get_score_color(compatibility_score)
+                    st.markdown(f"""
+                    <div style="text-align: center; background: white; padding: 2rem; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+                        <h2 style="color: {color}; font-size: 3rem; margin: 0;">{compatibility_score:.1f}</h2>
+                        <h3 style="color: #000; margin: 0.5rem 0;">Compatibilidade Personalizada</h3>
+                        <h4 style="color: {color}; margin: 0;">{get_score_grade(compatibility_score)}</h4>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Recomendações personalizadas
+                st.markdown('<h5 style="background: #FFF3E0; padding: 0.8rem; border-radius: 8px;">💡 Suas Recomendações Personalizadas</h5>')
+                for i, rec in enumerate(st.session_state.user_profile.personalized_recommendations, 1):
+                    st.markdown(f"""
+                    <div style="background: #FFF8F0; padding: 0.8rem; border-radius: 8px; margin: 0.5rem 0; border-left: 4px solid #FF9800;">
+                        <strong>💡 Recomendação {i}:</strong> {rec}
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Análise de compatibilidade detalhada
+                st.markdown('<h5 style="background: #E8F5E8; padding: 0.8rem; border-radius: 8px;">🎯 Análise de Compatibilidade Detalhada</h5>')
+                
+                # Mostrar como cada fator se alinha com o perfil
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.markdown('<h6><strong>✅ Fatores Alinhados ao Seu Perfil:</strong></h6>', unsafe_allow_html=True)
+                    
+                    # Verificar alinhamentos baseados no perfil
+                    alignments = []
+                    
+                    if "Segurança" in profile.priority_factors:
+                        safety_score = getattr(result.metrics, 'safety_score', 70)
+                        if safety_score >= 70:
+                            alignments.append(f"Segurança: {safety_score:.1f}/100 ✅")
+                    
+                    if "Transporte público" in profile.priority_factors:
+                        access_score = getattr(result.metrics, 'accessibility_score', 70)
+                        if access_score >= 70:
+                            alignments.append(f"Transporte: {access_score:.1f}/100 ✅")
+                    
+                    if profile.has_children:
+                        education_pois = len([poi for poi in result.pois if poi.get('category') == 'education'])
+                        if education_pois >= 3:
+                            alignments.append(f"Escolas próximas: {education_pois} encontradas ✅")
+                    
+                    if profile.has_pets:
+                        leisure_pois = len([poi for poi in result.pois if poi.get('category') == 'leisure'])
+                        if leisure_pois >= 3:
+                            alignments.append(f"Áreas de lazer: {leisure_pois} encontradas ✅")
+                    
+                    for alignment in alignments:
+                        st.markdown(f"• {alignment}")
+                    
+                    if not alignments:
+                        st.markdown("• Área com potencial de melhoria")
+                
+                with col2:
+                    st.markdown('<h6><strong>⚠️ Pontos de Atenção:</strong></h6>', unsafe_allow_html=True)
+                    
+                    # Verificar desalinhamentos
+                    concerns = []
+                    
+                    if "Silêncio/tranquilidade" in profile.priority_factors:
+                        if profile.noise_tolerance == "Preciso de muito silêncio":
+                            concerns.append("Área urbana pode ter ruído acima do ideal")
+                    
+                    if profile.budget_range == "Até R$ 400k":
+                        investment_score = getattr(result, 'investment_analysis', None)
+                        if investment_score and investment_score.metrics.overall_investment_score >= 80:
+                            concerns.append("Área valorizada pode estar acima do orçamento")
+                    
+                    if profile.has_elderly and not profile.accessibility_needs:
+                        ped_score = getattr(result, 'pedestrian_score', None)
+                        if ped_score and ped_score.accessibility_score < 60:
+                            concerns.append("Acessibilidade limitada para idosos")
+                    
+                    for concern in concerns:
+                        st.markdown(f"• {concern}")
+                    
+                    if not concerns:
+                        st.markdown("• Nenhum ponto crítico identificado")
+                
+                # Sugestões de busca refinada
+                st.markdown('<h5 style="background: #F3E5F5; padding: 0.8rem; border-radius: 8px;">🔍 Sugestões para Refinar sua Busca</h5>')
+                
+                search_suggestions = []
+                
+                if compatibility_score < 70:
+                    search_suggestions.append("Considere expandir o raio de busca")
+                    search_suggestions.append("Explore bairros adjacentes com características similares")
+                
+                if profile.investment_purpose == "Para investimento/aluguel":
+                    search_suggestions.append("Foque em áreas com alta densidade de transporte público")
+                    search_suggestions.append("Considere proximidade a universidades e centros comerciais")
+                
+                if profile.has_children:
+                    search_suggestions.append("Priorize áreas com rating alto em educação")
+                    search_suggestions.append("Verifique proximidade a pediatras e hospitais infantis")
+                
+                for suggestion in search_suggestions:
+                    st.markdown(f"""
+                    <div style="background: #F8F4F9; padding: 0.5rem; border-radius: 5px; margin: 0.3rem 0; border-left: 3px solid #9C27B0;">
+                        🎯 {suggestion}
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+            else:
+                st.markdown("""
+                <div style="text-align: center; background: linear-gradient(135deg, #FFF3E0 0%, #FFE0B2 100%); padding: 2rem; border-radius: 15px;">
+                    <h3 style="color: #E65100;">🤖 Crie Seu Perfil Primeiro</h3>
+                    <p style="color: #BF360C; margin: 1rem 0;">Para receber recomendações personalizadas, complete o chatbot de perfil.</p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                if st.button("🚀 Criar Meu Perfil Agora", type="primary"):
+                    st.session_state.show_profile_chatbot = True
+                    st.rerun()
 
 # Enhanced Footer
 st.markdown("---")

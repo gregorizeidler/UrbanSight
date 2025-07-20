@@ -33,6 +33,15 @@ Sistema revolucionário de análise de propriedades que combina **OpenStreetMap*
 🚶‍♂️  Pedestrian Analyzer   → Avalia infraestrutura pedestre
 📊  Geo Visualizer        → Cria visualizações geográficas
 🎼  Orchestrator           → Coordena todo o pipeline
+
+💰  Investment Analyzer   → Análise completa de investimento
+📈  Urban Trends Analyzer → Tendências urbanas e desenvolvimento  
+🔮  Predictive Analyzer   → Previsões com IA avançada
+👨‍👩‍👧‍👦  Family Habitability  → Análise para famílias
+🏢  Commercial Viability  → Viabilidade comercial
+🎨  Visualization AI      → IA para visualizações
+💬  Conversational AI     → Chatbot inteligente
+🎮  Interactive Simulator → Simulações dinâmicas
 ```
 
 ### 📊 **Métricas Exclusivas**
@@ -43,6 +52,16 @@ Sistema revolucionário de análise de propriedades que combina **OpenStreetMap*
 - **Lifestyle Scores**: Vida cotidiana, entretenimento, família, profissional
 - **Green Space Index**: Proximidade e qualidade de áreas verdes
 - **Urban Intensity**: Densidade e intensidade urbana
+
+### 🤖 **Agentes IA Especializados**
+- **💰 Investment Analyzer**: Análise completa de potencial de investimento
+- **📈 Urban Trends Analyzer**: Tendências urbanas e desenvolvimento
+- **🔮 Predictive Analyzer**: Análises preditivas com IA
+- **👨‍👩‍👧‍👦 Family Habitability Analyzer**: Análise para famílias
+- **🏢 Commercial Viability Analyzer**: Viabilidade comercial
+- **🎨 Visualization AI**: Geração inteligente de visualizações
+- **💬 Conversational AI**: Chatbot inteligente para insights
+- **🎮 Interactive Simulator**: Simulações interativas
 
 ---
 
@@ -109,6 +128,20 @@ Infraestrutura Pedestre:
   - Análise de calçadas
   - Segurança em travessias
   - Acessibilidade universal
+
+Análises AI Especializadas:
+  - Análise completa de investimento imobiliário
+  - Tendências de desenvolvimento urbano
+  - Previsões de valorização e crescimento
+  - Análise de habitabilidade para famílias
+  - Viabilidade para empreendimentos comerciais
+  - Simulações interativas de cenários
+
+Chatbot Inteligente:
+  - Conversação natural sobre análises
+  - Respostas personalizadas por perfil
+  - Interpretação de dados complexos
+  - Recomendações específicas contextuais
 ```
 
 ### 🗺️ **Visualizações Avançadas**
@@ -244,7 +277,16 @@ urbansight/
 │   ├── advanced_metrics.py    # Métricas avançadas
 │   ├── pedestrian_analyzer.py # Análise pedestre
 │   ├── geo_visualizer.py      # Visualizações geo
-│   └── orchestrator.py        # Orquestrador
+│   ├── orchestrator.py        # Orquestrador
+│   ├── 💰 investment_analyzer.py      # Análise de investimento
+│   ├── 📈 urban_trends_analyzer.py   # Tendências urbanas
+│   ├── 🔮 predictive_analyzer.py     # Análise preditiva
+│   ├── 👨‍👩‍👧‍👦 family_habitability_analyzer.py # Habitabilidade familiar
+│   ├── 🏢 commercial_viability_analyzer.py # Viabilidade comercial
+│   ├── 🎨 visualization_ai.py        # IA de visualização
+│   ├── 💬 conversational_ai.py       # Chatbot IA
+│   ├── 🎮 interactive_simulator.py   # Simulador interativo
+│   └── 🛠️ utils.py                   # Utilitários
 ├── 🌐 api/                    # API REST
 │   └── main.py               # FastAPI
 ├── 🎨 streamlit_app.py        # Interface principal
@@ -298,6 +340,15 @@ urbansight/
 - [x] Análise de infraestrutura pedestre
 - [x] Visualizações geográficas
 - [x] Relatórios exportáveis
+- [x] **Agentes IA especializados**
+- [x] **Análise de investimento imobiliário**
+- [x] **Análise de tendências urbanas**
+- [x] **Análise preditiva com IA**
+- [x] **Análise de habitabilidade familiar**
+- [x] **Análise de viabilidade comercial**
+- [x] **Chatbot conversacional inteligente**
+- [x] **Simulações interativas de cenários**
+- [x] **Sistema de perfil personalizado**
 
 ### 🔄 **Roadmap Futuro**
 - [ ] Integração com dados de mercado imobiliário

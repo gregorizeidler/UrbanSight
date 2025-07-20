@@ -13,6 +13,18 @@ from agents.insight_generator import InsightGenerator, PropertyInsight
 from agents.advanced_metrics import AdvancedMetricsCalculator, AdvancedMetrics
 from agents.geo_visualizer import GeoVisualizer, MapVisualization
 from agents.pedestrian_analyzer import PedestrianAnalyzer, PedestrianScore
+from agents.environmental_analyzer import EnvironmentalAnalyzer, EnvironmentalMetrics
+from agents.mobility_analyzer import AdvancedMobilityAnalyzer, MobilityMetrics
+from agents.urban_analyzer import UrbanInfrastructureAnalyzer, UrbanMetrics
+from agents.safety_analyzer import SafetyEmergencyAnalyzer, SafetyMetrics
+
+from agents.economy_analyzer import LocalEconomyAnalyzer, LocalEconomyMetrics
+from agents.special_features_analyzer import SpecialFeaturesAnalyzer, SpecialFeaturesMetrics
+from agents.investment_analyzer import InvestmentAnalyzer, InvestmentAnalysisResult
+from agents.urban_trends_analyzer import UrbanTrendsAnalyzer, UrbanTrendsResult
+from agents.predictive_analyzer import PredictiveAnalyzer, PredictiveAnalysisResult
+from agents.family_habitability_analyzer import FamilyHabitabilityAnalyzer, FamilyHabitabilityResult
+from agents.commercial_viability_analyzer import CommercialViabilityAnalyzer, CommercialViabilityResult
 from config import Config
 
 logging.basicConfig(level=logging.INFO)
@@ -32,6 +44,20 @@ class PropertyAnalysisResult:
     advanced_metrics: Optional[AdvancedMetrics] = None
     advanced_maps: Optional[Dict[str, MapVisualization]] = None
     pedestrian_score: Optional[PedestrianScore] = None
+    environmental_metrics: Optional[EnvironmentalMetrics] = None
+    mobility_metrics: Optional[MobilityMetrics] = None
+    urban_metrics: Optional[UrbanMetrics] = None
+    safety_metrics: Optional[SafetyMetrics] = None
+
+    economy_metrics: Optional[LocalEconomyMetrics] = None
+    special_features_metrics: Optional[SpecialFeaturesMetrics] = None
+    
+    # New AI-powered analyses
+    investment_analysis: Optional[InvestmentAnalysisResult] = None
+    urban_trends: Optional[UrbanTrendsResult] = None
+    predictive_analysis: Optional[PredictiveAnalysisResult] = None
+    family_habitability: Optional[FamilyHabitabilityResult] = None
+    commercial_viability: Optional[CommercialViabilityResult] = None
     error_message: Optional[str] = None
 
 class PropertyAnalysisOrchestrator:
@@ -45,6 +71,22 @@ class PropertyAnalysisOrchestrator:
         self.advanced_metrics_calculator = AdvancedMetricsCalculator()
         self.geo_visualizer = GeoVisualizer()
         self.pedestrian_analyzer = PedestrianAnalyzer()
+        
+        # Novos analisadores especializados
+        self.environmental_analyzer = EnvironmentalAnalyzer()
+        self.mobility_analyzer = AdvancedMobilityAnalyzer()
+        self.urban_analyzer = UrbanInfrastructureAnalyzer()
+        self.safety_analyzer = SafetyEmergencyAnalyzer()
+
+        self.economy_analyzer = LocalEconomyAnalyzer()
+        self.special_features_analyzer = SpecialFeaturesAnalyzer()
+        
+        # New AI-powered analyzers
+        self.investment_analyzer = InvestmentAnalyzer(self.config.openai_api_key)
+        self.urban_trends_analyzer = UrbanTrendsAnalyzer(self.config.openai_api_key)
+        self.predictive_analyzer = PredictiveAnalyzer(self.config.openai_api_key)
+        self.family_habitability_analyzer = FamilyHabitabilityAnalyzer(self.config.openai_api_key)
+        self.commercial_viability_analyzer = CommercialViabilityAnalyzer(self.config.openai_api_key)
         
     async def analyze_property(self, address: str, analysis_id: str = None) -> PropertyAnalysisResult:
         """Complete property analysis orchestration"""
@@ -88,16 +130,81 @@ class PropertyAnalysisOrchestrator:
             pedestrian_infrastructure = await self.pedestrian_analyzer.collect_pedestrian_data(property_data)
             pedestrian_score = self.pedestrian_analyzer.calculate_pedestrian_score(pedestrian_infrastructure)
             
-            # Step 5: Generate insights
-            logger.info("Step 5: Generating insights with LLM...")
+            # Step 5: Análises especializadas em paralelo
+            logger.info("Step 5: Running specialized analyses in parallel...")
+            
+            # Executar análises especializadas em paralelo para melhor performance
+            environmental_task = self.environmental_analyzer.collect_environmental_data(property_data)
+            mobility_task = self.mobility_analyzer.analyze_mobility(property_data)
+            urban_task = self.urban_analyzer.analyze_urban_infrastructure(property_data)
+            safety_task = self.safety_analyzer.analyze_safety(property_data)
+
+            economy_task = self.economy_analyzer.analyze_local_economy(property_data)
+            special_features_task = self.special_features_analyzer.analyze_special_features(property_data)
+            
+            # Aguardar todas as análises especializadas
+            specialized_results = await asyncio.gather(
+                environmental_task,
+                mobility_task,
+                urban_task,
+                safety_task,
+
+                economy_task,
+                special_features_task,
+                return_exceptions=True
+            )
+            
+            environmental_metrics, mobility_metrics, urban_metrics, safety_metrics, economy_metrics, special_features_metrics = specialized_results
+            
+            # Verificar se houve erros e criar métricas vazias se necessário
+            if isinstance(environmental_metrics, Exception):
+                logger.error(f"Environmental analysis failed: {environmental_metrics}")
+                environmental_metrics = None
+            if isinstance(mobility_metrics, Exception):
+                logger.error(f"Mobility analysis failed: {mobility_metrics}")
+                mobility_metrics = None
+            if isinstance(urban_metrics, Exception):
+                logger.error(f"Urban analysis failed: {urban_metrics}")
+                urban_metrics = None
+            if isinstance(safety_metrics, Exception):
+                logger.error(f"Safety analysis failed: {safety_metrics}")
+                safety_metrics = None
+
+            if isinstance(economy_metrics, Exception):
+                logger.error(f"Economy analysis failed: {economy_metrics}")
+                economy_metrics = None
+            if isinstance(special_features_metrics, Exception):
+                logger.error(f"Special features analysis failed: {special_features_metrics}")
+                special_features_metrics = None
+            
+            # Step 6: Generate insights
+            logger.info("Step 6: Generating insights with LLM...")
             insights = await self.insight_generator.generate_insights(property_data, metrics, pois)
             
-            # Step 6: Create interactive map
-            logger.info("Step 6: Creating interactive map...")
+            # Step 6.5: Generate AI-powered analyses
+            logger.info("Step 6.5: Running AI-powered analyses...")
+            investment_analysis = await self.investment_analyzer.analyze_investment_potential(
+                address, property_data, pois, metrics
+            )
+            urban_trends = await self.urban_trends_analyzer.analyze_urban_trends(
+                address, property_data, pois, metrics
+            )
+            predictive_analysis = await self.predictive_analyzer.analyze_future_development(
+                address, property_data, pois, metrics
+            )
+            family_habitability = await self.family_habitability_analyzer.analyze_family_habitability(
+                address, property_data, pois, metrics
+            )
+            commercial_viability = await self.commercial_viability_analyzer.analyze_commercial_viability(
+                address, property_data, pois, metrics
+            )
+            
+            # Step 7: Create interactive map
+            logger.info("Step 7: Creating interactive map...")
             map_html = self._create_interactive_map(property_data, pois, metrics, pedestrian_score)
             
-            # Step 7: Create advanced maps
-            logger.info("Step 7: Creating advanced map visualizations...")
+            # Step 8: Create advanced maps
+            logger.info("Step 8: Creating advanced map visualizations...")
             advanced_maps = self.geo_visualizer.create_all_advanced_maps(property_data, pois, metrics)
             
             logger.info(f"Analysis completed successfully for {address}")
@@ -113,7 +220,18 @@ class PropertyAnalysisOrchestrator:
                 success=True,
                 advanced_metrics=advanced_metrics,
                 advanced_maps=advanced_maps,
-                pedestrian_score=pedestrian_score
+                pedestrian_score=pedestrian_score,
+                environmental_metrics=environmental_metrics,
+                mobility_metrics=mobility_metrics,
+                urban_metrics=urban_metrics,
+                safety_metrics=safety_metrics,
+                economy_metrics=economy_metrics,
+                special_features_metrics=special_features_metrics,
+                investment_analysis=investment_analysis if investment_analysis.success else None,
+                urban_trends=urban_trends if urban_trends.success else None,
+                predictive_analysis=predictive_analysis if predictive_analysis.success else None,
+                family_habitability=family_habitability if family_habitability.success else None,
+                commercial_viability=commercial_viability if commercial_viability.success else None
             )
             
         except Exception as e:
@@ -298,12 +416,7 @@ class PropertyAnalysisOrchestrator:
                     'variety_count': result.advanced_metrics.urban_diversity.service_variety_count,
                     'dominant_category': result.advanced_metrics.urban_diversity.dominant_category
             },
-                'lifestyle_scores': {
-                    'daily_life': result.advanced_metrics.lifestyle.daily_life_score,
-                    'entertainment': result.advanced_metrics.lifestyle.entertainment_score,
-                    'family_friendliness': result.advanced_metrics.lifestyle.family_friendliness,
-                    'professional': result.advanced_metrics.lifestyle.professional_score
-                },
+                
                 'green_space_score': result.advanced_metrics.green_space_score,
                 'urban_intensity_score': result.advanced_metrics.urban_intensity_score
             }

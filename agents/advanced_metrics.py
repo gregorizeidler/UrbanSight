@@ -35,13 +35,7 @@ class MobilityMetrics:
     average_walking_time: Dict[str, float]
     connectivity_score: float
 
-@dataclass
-class LifestyleMetrics:
-    """Métricas de estilo de vida"""
-    daily_life_score: float
-    entertainment_score: float
-    family_friendliness: float
-    professional_score: float
+
 
 @dataclass
 class AdvancedMetrics:
@@ -49,7 +43,7 @@ class AdvancedMetrics:
     service_density: ServiceDensityMetrics
     urban_diversity: UrbanDiversityMetrics
     mobility: MobilityMetrics
-    lifestyle: LifestyleMetrics
+
     green_space_score: float
     urban_intensity_score: float
 
@@ -195,35 +189,8 @@ class AdvancedMetricsCalculator:
         
         return walking_times
     
-    def calculate_lifestyle_metrics(self, pois: List[POI]) -> LifestyleMetrics:
-        """Calcula métricas de estilo de vida"""
-        
-        # Score de vida cotidiana (supermercados, farmácias, bancos)
-        daily_essentials = ['shopping', 'healthcare', 'services']
-        daily_pois = [poi for poi in pois if poi.category in daily_essentials]
-        daily_life_score = min(len(daily_pois) * 2, 100)
-        
-        # Score de entretenimento (restaurantes, bares, cinemas)
-        entertainment_categories = ['food', 'leisure']
-        entertainment_pois = [poi for poi in pois if poi.category in entertainment_categories]
-        entertainment_score = min(len(entertainment_pois) * 1.5, 100)
-        
-        # Score de família (escolas, parques, playgrounds)
-        family_categories = ['education', 'leisure']
-        family_pois = [poi for poi in pois if poi.category in family_categories]
-        family_friendliness = min(len(family_pois) * 3, 100)
-        
-        # Score profissional (transporte, serviços, conectividade)
-        professional_categories = ['transport', 'services']
-        professional_pois = [poi for poi in pois if poi.category in professional_categories]
-        professional_score = min(len(professional_pois) * 2.5, 100)
-        
-        return LifestyleMetrics(
-            daily_life_score=daily_life_score,
-            entertainment_score=entertainment_score,
-            family_friendliness=family_friendliness,
-            professional_score=professional_score
-        )
+
+
     
     def calculate_green_space_score(self, pois: List[POI]) -> float:
         """Calcula score de espaços verdes"""
@@ -264,7 +231,7 @@ class AdvancedMetricsCalculator:
             service_density=self.calculate_service_density(pois),
             urban_diversity=self.calculate_urban_diversity(pois),
             mobility=self.calculate_mobility_metrics(pois),
-            lifestyle=self.calculate_lifestyle_metrics(pois),
+
             green_space_score=self.calculate_green_space_score(pois),
             urban_intensity_score=self.calculate_urban_intensity(pois)
         )
@@ -275,10 +242,7 @@ class AdvancedMetricsCalculator:
             "densidade_servicos": advanced_metrics.service_density.service_variety_score,
             "diversidade_urbana": advanced_metrics.urban_diversity.shannon_diversity_index,
             "conectividade": advanced_metrics.mobility.connectivity_score,
-            "vida_cotidiana": advanced_metrics.lifestyle.daily_life_score,
-            "entretenimento": advanced_metrics.lifestyle.entertainment_score,
-            "familia": advanced_metrics.lifestyle.family_friendliness,
-            "profissional": advanced_metrics.lifestyle.professional_score,
+
             "espacos_verdes": advanced_metrics.green_space_score,
             "intensidade_urbana": advanced_metrics.urban_intensity_score
         } 
