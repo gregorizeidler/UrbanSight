@@ -4,7 +4,6 @@ from typing import Dict, Optional
 from dataclasses import dataclass, asdict
 import folium
 from folium import plugins
-import json
 from datetime import datetime
 
 from agents.osm_data_collector import OSMDataCollector, PropertyData, POI
@@ -17,6 +16,7 @@ from config import Config
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 @dataclass
 class PropertyAnalysisResult:
@@ -34,9 +34,10 @@ class PropertyAnalysisResult:
     pedestrian_score: Optional[PedestrianScore] = None
     error_message: Optional[str] = None
 
+
 class PropertyAnalysisOrchestrator:
     """Main orchestrator that coordinates all agents"""
-    
+
     def __init__(self):
         self.config = Config()
         self.osm_collector = OSMDataCollector()
@@ -45,20 +46,20 @@ class PropertyAnalysisOrchestrator:
         self.advanced_metrics_calculator = AdvancedMetricsCalculator()
         self.geo_visualizer = GeoVisualizer()
         self.pedestrian_analyzer = PedestrianAnalyzer()
-        
+
     async def analyze_property(self, address: str, analysis_id: str = None) -> PropertyAnalysisResult:
         """Complete property analysis orchestration"""
-        
+
         if analysis_id is None:
             analysis_id = f"analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        
+
         logger.info(f"Starting property analysis for: {address} (ID: {analysis_id})")
-        
+
         try:
             # Step 1: Collect OSM data
             logger.info("Step 1: Collecting OSM data...")
             osm_data = await self.osm_collector.analyze_location(address)
-            
+
             if not osm_data:
                 return PropertyAnalysisResult(
                     property_data=None,
@@ -71,37 +72,37 @@ class PropertyAnalysisOrchestrator:
                     success=False,
                     error_message="Could not geocode address or collect OSM data"
                 )
-            
+
             property_data = osm_data['property']
             pois = osm_data['pois']
-            
+
             # Step 2: Analyze neighborhood
             logger.info("Step 2: Analyzing neighborhood metrics...")
             metrics = self.neighborhood_analyst.analyze_neighborhood(property_data, pois)
-            
+
             # Step 3: Calculate advanced metrics
             logger.info("Step 3: Calculating advanced metrics...")
             advanced_metrics = self.advanced_metrics_calculator.calculate_all_metrics(pois)
-            
+
             # Step 4: Analyze pedestrian infrastructure
             logger.info("Step 4: Analyzing pedestrian infrastructure...")
             pedestrian_infrastructure = await self.pedestrian_analyzer.collect_pedestrian_data(property_data)
             pedestrian_score = self.pedestrian_analyzer.calculate_pedestrian_score(pedestrian_infrastructure)
-            
+
             # Step 5: Generate insights
             logger.info("Step 5: Generating insights with LLM...")
             insights = await self.insight_generator.generate_insights(property_data, metrics, pois)
-            
+
             # Step 6: Create interactive map
             logger.info("Step 6: Creating interactive map...")
             map_html = self._create_interactive_map(property_data, pois, metrics, pedestrian_score)
-            
+
             # Step 7: Create advanced maps
             logger.info("Step 7: Creating advanced map visualizations...")
             advanced_maps = self.geo_visualizer.create_all_advanced_maps(property_data, pois, metrics)
-            
+
             logger.info(f"Analysis completed successfully for {address}")
-            
+
             return PropertyAnalysisResult(
                 property_data=property_data,
                 metrics=metrics,
@@ -115,7 +116,7 @@ class PropertyAnalysisOrchestrator:
                 advanced_maps=advanced_maps,
                 pedestrian_score=pedestrian_score
             )
-            
+
         except Exception as e:
             logger.error(f"Error in property analysis: {str(e)}")
             return PropertyAnalysisResult(
@@ -129,18 +130,20 @@ class PropertyAnalysisOrchestrator:
                 success=False,
                 error_message=str(e)
             )
-    
-    def _create_interactive_map(self, property_data: PropertyData, pois: list, 
-                               metrics: NeighborhoodMetrics, pedestrian_score: PedestrianScore = None) -> str:
+
+    def _create_interactive_map(
+        self, property_data: PropertyData, pois: list,
+        metrics: NeighborhoodMetrics, pedestrian_score: PedestrianScore = None
+    ) -> str:
         """Create interactive Folium map with property and POIs"""
-        
+
         # Create base map centered on property
         m = folium.Map(
             location=[property_data.lat, property_data.lon],
             zoom_start=15,
             tiles='OpenStreetMap'
         )
-        
+
         # Add property marker
         folium.Marker(
             location=[property_data.lat, property_data.lon],
@@ -157,7 +160,7 @@ class PropertyAnalysisOrchestrator:
             tooltip="Propriedade Analisada",
             icon=folium.Icon(color='red', icon='home', prefix='fa')
         ).add_to(m)
-        
+
         # Define category colors and icons
         category_config = {
             'education': {'color': 'blue', 'icon': 'graduation-cap'},
@@ -169,11 +172,11 @@ class PropertyAnalysisOrchestrator:
             'food': {'color': 'darkred', 'icon': 'cutlery'},
             'other': {'color': 'lightgray', 'icon': 'question'}
         }
-        
+
         # Add POI markers
         for poi in pois:
             config = category_config.get(poi.category, category_config['other'])
-            
+
             folium.Marker(
                 location=[poi.lat, poi.lon],
                 popup=f"""
@@ -186,12 +189,12 @@ class PropertyAnalysisOrchestrator:
                 """,
                 tooltip=f"{poi.name} ({poi.distance:.0f}m)",
                 icon=folium.Icon(
-                    color=config['color'], 
-                    icon=config['icon'], 
+                    color=config['color'],
+                    icon=config['icon'],
                     prefix='fa'
                 )
             ).add_to(m)
-        
+
         # Add search radius circle
         folium.Circle(
             location=[property_data.lat, property_data.lon],
@@ -201,10 +204,10 @@ class PropertyAnalysisOrchestrator:
             fill=True,
             fillOpacity=0.1
         ).add_to(m)
-        
+
         # Add marker clusters for better visualization
-        marker_cluster = plugins.MarkerCluster().add_to(m)
-        
+        plugins.MarkerCluster().add_to(m)
+
         # Add legend
         legend_html = """
         <div style="position: fixed; 
@@ -222,24 +225,24 @@ class PropertyAnalysisOrchestrator:
         <p><i class="fa fa-cog" style="color:gray"></i> Serviços</p>
         </div>
         """
-        
+
         m.get_root().html.add_child(folium.Element(legend_html))
-        
+
         # Add fullscreen button
         plugins.Fullscreen().add_to(m)
-        
+
         # Return HTML string
         return m._repr_html_()
-    
+
     def get_advanced_map(self, analysis_id: str, map_type: str) -> Optional[MapVisualization]:
         """Get specific advanced map from analysis result"""
         # This would typically retrieve from cache/database
         # For now, return None - implementation depends on storage strategy
         return None
-    
+
     def export_analysis_report(self, result: PropertyAnalysisResult) -> Dict:
         """Export complete analysis report as structured data"""
-        
+
         if not result.success:
             return {
                 'success': False,
@@ -247,7 +250,7 @@ class PropertyAnalysisOrchestrator:
                 'analysis_id': result.analysis_id,
                 'timestamp': result.timestamp.isoformat()
             }
-        
+
         # Base report
         report = {
             'success': True,
@@ -284,7 +287,7 @@ class PropertyAnalysisOrchestrator:
                 'ideal_resident_profile': result.insights.ideal_resident_profile
             }
         }
-        
+
         # Add advanced metrics if available
         if result.advanced_metrics:
             report['advanced_metrics'] = {
@@ -292,12 +295,12 @@ class PropertyAnalysisOrchestrator:
                     'variety_score': result.advanced_metrics.service_density.service_variety_score,
                     'completeness_score': result.advanced_metrics.service_density.completeness_score,
                     'total_services': result.advanced_metrics.service_density.total_services
-            },
+                },
                 'urban_diversity': {
                     'shannon_index': result.advanced_metrics.urban_diversity.shannon_diversity_index,
                     'variety_count': result.advanced_metrics.urban_diversity.service_variety_count,
                     'dominant_category': result.advanced_metrics.urban_diversity.dominant_category
-            },
+                },
                 'lifestyle_scores': {
                     'daily_life': result.advanced_metrics.lifestyle.daily_life_score,
                     'entertainment': result.advanced_metrics.lifestyle.entertainment_score,
@@ -307,7 +310,7 @@ class PropertyAnalysisOrchestrator:
                 'green_space_score': result.advanced_metrics.green_space_score,
                 'urban_intensity_score': result.advanced_metrics.urban_intensity_score
             }
-        
+
         # Add advanced maps info if available
         if result.advanced_maps:
             report['advanced_maps'] = {
@@ -318,25 +321,25 @@ class PropertyAnalysisOrchestrator:
                 }
                 for map_type, map_viz in result.advanced_maps.items()
             }
-        
+
         return report
-    
+
     async def batch_analyze_properties(self, addresses: list) -> list:
         """Analyze multiple properties in batch"""
-        
+
         logger.info(f"Starting batch analysis for {len(addresses)} properties")
-        
+
         # Use semaphore to limit concurrent requests
         semaphore = asyncio.Semaphore(self.config.MAX_CONCURRENT_REQUESTS)
-        
+
         async def limited_analyze(address):
             async with semaphore:
                 return await self.analyze_property(address)
-        
+
         # Execute analyses concurrently
         tasks = [limited_analyze(address) for address in addresses]
         results = await asyncio.gather(*tasks, return_exceptions=True)
-        
+
         # Filter out exceptions and log errors
         valid_results = []
         for i, result in enumerate(results):
@@ -344,7 +347,7 @@ class PropertyAnalysisOrchestrator:
                 logger.error(f"Error analyzing {addresses[i]}: {str(result)}")
             else:
                 valid_results.append(result)
-        
+
         logger.info(f"Batch analysis completed: {len(valid_results)}/{len(addresses)} successful")
-        
+
         return valid_results 
