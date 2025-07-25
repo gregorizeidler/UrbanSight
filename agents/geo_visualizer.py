@@ -2,7 +2,6 @@ import folium
 from folium import plugins
 from folium.plugins import HeatMap
 import numpy as np
-import pandas as pd
 from typing import List, Dict, Optional
 from sklearn.cluster import DBSCAN
 import logging
@@ -14,6 +13,7 @@ from agents.neighborhood_analyst import NeighborhoodMetrics
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 @dataclass
 class MapVisualization:
     """Container for map visualization data"""
@@ -22,13 +22,14 @@ class MapVisualization:
     title: str
     description: str
 
+
 class GeoVisualizer:
     """Advanced geographic visualizations using existing OSM data"""
-    
+
     def __init__(self):
         self.category_colors = {
             'education': '#2E86AB',
-            'healthcare': '#A23B72', 
+            'healthcare': '#A23B72',
             'shopping': '#F18F01',
             'transport': '#C73E1D',
             'leisure': '#4CAF50',
@@ -36,25 +37,27 @@ class GeoVisualizer:
             'food': '#FF5722',
             'other': '#607D8B'
         }
-        
-    def create_category_heatmap(self, property_data: PropertyData, pois: List[POI], 
-                               category: str) -> MapVisualization:
+
+    def create_category_heatmap(
+        self, property_data: PropertyData, pois: List[POI],
+        category: str
+    ) -> MapVisualization:
         """Create heatmap for specific POI category"""
-        
+
         # Filter POIs by category
         category_pois = [poi for poi in pois if poi.category == category]
-        
+
         if not category_pois:
             logger.warning(f"No POIs found for category: {category}")
             return self._create_empty_map(property_data, f"No {category} POIs found")
-        
+
         # Create base map
         m = folium.Map(
             location=[property_data.lat, property_data.lon],
             zoom_start=15,
             tiles='OpenStreetMap'
         )
-        
+
         # Add property marker
         folium.Marker(
             location=[property_data.lat, property_data.lon],
@@ -62,14 +65,14 @@ class GeoVisualizer:
             tooltip="Propriedade Analisada",
             icon=folium.Icon(color='red', icon='home', prefix='fa')
         ).add_to(m)
-        
+
         # Prepare heat data (lat, lon, weight)
         heat_data = []
         for poi in category_pois:
             # Weight based on inverse distance (closer = more weight)
             weight = max(0.1, 1 - (float(poi.distance) / 1000))
             heat_data.append([float(poi.lat), float(poi.lon), weight])
-        
+
         # Add heatmap
         HeatMap(
             heat_data,
@@ -78,13 +81,13 @@ class GeoVisualizer:
             max_zoom=1,
             gradient={
                 0.0: 'blue',
-                0.3: 'cyan', 
+                0.3: 'cyan',
                 0.6: 'lime',
                 0.8: 'yellow',
                 1.0: 'red'
             }
         ).add_to(m)
-        
+
         # Add individual markers
         for poi in category_pois:
             folium.CircleMarker(
@@ -102,7 +105,7 @@ class GeoVisualizer:
                 fill=True,
                 fillOpacity=0.7
             ).add_to(m)
-        
+
         # Add legend
         legend_html = f"""
         <div style="position: fixed; top: 10px; right: 10px; width: 200px; 
@@ -116,23 +119,23 @@ class GeoVisualizer:
         </div>
         """
         m.get_root().html.add_child(folium.Element(legend_html))
-        
+
         return MapVisualization(
             map_html=m._repr_html_(),
             map_type="heatmap",
             title=f"Densidade de {category.title()}",
             description=f"Mapa de calor mostrando densidade de {len(category_pois)} locais de {category}"
         )
-    
+
     def create_distance_zones_map(self, property_data: PropertyData, pois: List[POI]) -> MapVisualization:
         """Create map with distance zones and POIs colored by distance"""
-        
+
         m = folium.Map(
             location=[property_data.lat, property_data.lon],
             zoom_start=15,
             tiles='OpenStreetMap'
         )
-        
+
         # Add property marker
         folium.Marker(
             location=[property_data.lat, property_data.lon],
@@ -140,14 +143,14 @@ class GeoVisualizer:
             tooltip="Propriedade Analisada",
             icon=folium.Icon(color='red', icon='home', prefix='fa')
         ).add_to(m)
-        
+
         # Distance zones
         zones = [
             (300, '#4CAF50', 'Muito Próximo'),
             (600, '#FFC107', 'Próximo'),
             (1000, '#FF5722', 'Caminhável')
         ]
-        
+
         # Add distance circles
         for distance, color, label in zones:
             folium.Circle(
@@ -159,10 +162,10 @@ class GeoVisualizer:
                 fillOpacity=0.1,
                 weight=2
             ).add_to(m)
-        
+
         # Color POIs by distance
         zone_counts = {label: 0 for _, _, label in zones}
-        
+
         for poi in pois:
             # Determine zone
             if poi.distance <= 300:
@@ -174,9 +177,9 @@ class GeoVisualizer:
             else:
                 color = '#FF5722'
                 zone = 'Caminhável'
-            
+
             zone_counts[zone] += 1
-            
+
             # Add marker
             folium.CircleMarker(
                 location=[poi.lat, poi.lon],
@@ -194,7 +197,7 @@ class GeoVisualizer:
                 fill=True,
                 fillOpacity=0.8
             ).add_to(m)
-        
+
         # Add legend
         legend_html = f"""
         <div style="position: fixed; top: 10px; right: 10px; width: 220px; 
@@ -209,34 +212,34 @@ class GeoVisualizer:
         </div>
         """
         m.get_root().html.add_child(folium.Element(legend_html))
-        
+
         return MapVisualization(
             map_html=m._repr_html_(),
             map_type="distance_zones",
             title="Zonas de Distância",
             description=f"POIs organizados por proximidade em {len(pois)} locais"
         )
-    
+
     def create_service_clusters_map(self, property_data: PropertyData, pois: List[POI]) -> MapVisualization:
         """Create map showing service clusters using DBSCAN"""
-        
+
         if len(pois) < 3:
             return self._create_empty_map(property_data, "Insufficient POIs for clustering")
-        
+
         # Prepare coordinates for clustering
         coords = np.array([[poi.lat, poi.lon] for poi in pois])
-        
+
         # Apply DBSCAN clustering
         # eps=0.001 ≈ ~100m, min_samples=3
         clustering = DBSCAN(eps=0.001, min_samples=3).fit(coords)
-        
+
         # Create base map
         m = folium.Map(
             location=[property_data.lat, property_data.lon],
             zoom_start=15,
             tiles='OpenStreetMap'
         )
-        
+
         # Add property marker
         folium.Marker(
             location=[property_data.lat, property_data.lon],
@@ -244,15 +247,15 @@ class GeoVisualizer:
             tooltip="Propriedade Analisada",
             icon=folium.Icon(color='red', icon='home', prefix='fa')
         ).add_to(m)
-        
+
         # Colors for clusters
-        cluster_colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', 
-                         '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9']
-        
+        cluster_colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
+                          '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9']
+
         # Group POIs by cluster
         clusters = {}
         noise_pois = []
-        
+
         for i, poi in enumerate(pois):
             cluster_id = clustering.labels_[i]
             if cluster_id == -1:
@@ -261,15 +264,15 @@ class GeoVisualizer:
                 if cluster_id not in clusters:
                     clusters[cluster_id] = []
                 clusters[cluster_id].append(poi)
-        
+
         # Add cluster markers
         for cluster_id, cluster_pois in clusters.items():
             color = cluster_colors[cluster_id % len(cluster_colors)]
-            
+
             # Calculate cluster center
             center_lat = np.mean([poi.lat for poi in cluster_pois])
             center_lon = np.mean([poi.lon for poi in cluster_pois])
-            
+
             # Add cluster center marker
             folium.Marker(
                 location=[center_lat, center_lon],
@@ -283,7 +286,7 @@ class GeoVisualizer:
                 tooltip=f"Cluster {cluster_id + 1} ({len(cluster_pois)} serviços)",
                 icon=folium.Icon(color='black', icon='star', prefix='fa')
             ).add_to(m)
-            
+
             # Add individual POIs in cluster
             for poi in cluster_pois:
                 folium.CircleMarker(
@@ -302,7 +305,7 @@ class GeoVisualizer:
                     fill=True,
                     fillOpacity=0.7
                 ).add_to(m)
-        
+
         # Add noise POIs (not in any cluster)
         for poi in noise_pois:
             folium.CircleMarker(
@@ -321,7 +324,7 @@ class GeoVisualizer:
                 fill=True,
                 fillOpacity=0.5
             ).add_to(m)
-        
+
         # Add legend
         legend_html = f"""
         <div style="position: fixed; top: 10px; right: 10px; width: 220px; 
@@ -336,24 +339,24 @@ class GeoVisualizer:
         </div>
         """
         m.get_root().html.add_child(folium.Element(legend_html))
-        
+
         return MapVisualization(
             map_html=m._repr_html_(),
             map_type="service_clusters",
             title="Clusters de Serviços",
             description=f"Identificados {len(clusters)} clusters de serviços próximos"
         )
-    
+
     def create_walkability_directions_map(self, property_data: PropertyData, pois: List[POI]) -> MapVisualization:
         """Create map showing walkability by direction (N, S, E, W)"""
-        
+
         # Categorize POIs by direction
         directions = {'Norte': [], 'Sul': [], 'Leste': [], 'Oeste': []}
-        
+
         for poi in pois:
             lat_diff = float(poi.lat) - float(property_data.lat)
             lon_diff = float(poi.lon) - float(property_data.lon)
-            
+
             if abs(lat_diff) > abs(lon_diff):
                 if lat_diff > 0:
                     directions['Norte'].append(poi)
@@ -364,14 +367,14 @@ class GeoVisualizer:
                     directions['Leste'].append(poi)
                 else:
                     directions['Oeste'].append(poi)
-        
+
         # Create base map
         m = folium.Map(
             location=[property_data.lat, property_data.lon],
             zoom_start=15,
             tiles='OpenStreetMap'
         )
-        
+
         # Add property marker
         folium.Marker(
             location=[property_data.lat, property_data.lon],
@@ -379,18 +382,18 @@ class GeoVisualizer:
             tooltip="Propriedade Analisada",
             icon=folium.Icon(color='red', icon='home', prefix='fa')
         ).add_to(m)
-        
+
         # Direction colors
         direction_colors = {
             'Norte': '#2196F3',
-            'Sul': '#4CAF50', 
+            'Sul': '#4CAF50',
             'Leste': '#FF9800',
             'Oeste': '#9C27B0'
         }
-        
+
         # Add directional sectors
         import math
-        
+
         for direction, color in direction_colors.items():
             # Calculate sector boundaries
             if direction == 'Norte':
@@ -405,12 +408,12 @@ class GeoVisualizer:
             else:  # Oeste
                 start_angle = 225
                 end_angle = 315
-            
+
             # Add sector visualization (simplified as markers)
             angle_rad = math.radians((start_angle + end_angle) / 2)
             sector_lat = property_data.lat + 0.005 * math.cos(angle_rad)
             sector_lon = property_data.lon + 0.005 * math.sin(angle_rad)
-            
+
             folium.Marker(
                 location=[sector_lat, sector_lon],
                 popup=f"""
@@ -423,11 +426,11 @@ class GeoVisualizer:
                 tooltip=f"{direction} ({len(directions[direction])} POIs)",
                 icon=folium.Icon(color='white', icon='arrow-up', prefix='fa')
             ).add_to(m)
-        
+
         # Add POIs colored by direction
         for direction, direction_pois in directions.items():
             color = direction_colors[direction]
-            
+
             for poi in direction_pois:
                 folium.CircleMarker(
                     location=[poi.lat, poi.lon],
@@ -445,7 +448,7 @@ class GeoVisualizer:
                     fill=True,
                     fillOpacity=0.7
                 ).add_to(m)
-        
+
         # Calculate walkability score by direction
         direction_scores = {}
         for direction, direction_pois in directions.items():
@@ -457,7 +460,7 @@ class GeoVisualizer:
                 direction_scores[direction] = score
             else:
                 direction_scores[direction] = 0
-        
+
         # Add legend
         legend_html = f"""
         <div style="position: fixed; top: 10px; right: 10px; width: 220px; 
@@ -466,32 +469,32 @@ class GeoVisualizer:
         <h4>Caminhabilidade por Direção</h4>
         <p><i class="fa fa-home" style="color:red"></i> Propriedade</p>
         """
-        
+
         for direction, color in direction_colors.items():
             count = len(directions[direction])
             score = direction_scores[direction]
             legend_html += f'<p><i class="fa fa-circle" style="color:{color}"></i> {direction}: {count} POIs (Score: {score:.0f})</p>'
-        
+
         legend_html += f"""
         <p><strong>Melhor direção:</strong> {max(direction_scores, key=direction_scores.get)}</p>
         </div>
         """
-        
+
         m.get_root().html.add_child(folium.Element(legend_html))
-        
+
         return MapVisualization(
             map_html=m._repr_html_(),
             map_type="walkability_directions",
             title="Caminhabilidade por Direção",
             description=f"Análise direcional de {len(pois)} POIs"
         )
-    
+
     def create_service_gaps_map(self, property_data: PropertyData, pois: List[POI]) -> MapVisualization:
         """Create map highlighting service gaps"""
-        
+
         # Analyze service coverage
         categories = ['education', 'healthcare', 'shopping', 'transport', 'leisure', 'food', 'services']
-        
+
         coverage_analysis = {}
         for category in categories:
             category_pois = [poi for poi in pois if poi.category == category]
@@ -508,14 +511,14 @@ class GeoVisualizer:
                     'closest_distance': float('inf'),
                     'status': 'missing'
                 }
-        
+
         # Create base map
         m = folium.Map(
             location=[property_data.lat, property_data.lon],
             zoom_start=15,
             tiles='OpenStreetMap'
         )
-        
+
         # Add property marker
         folium.Marker(
             location=[property_data.lat, property_data.lon],
@@ -523,7 +526,7 @@ class GeoVisualizer:
             tooltip="Propriedade Analisada",
             icon=folium.Icon(color='red', icon='home', prefix='fa')
         ).add_to(m)
-        
+
         # Status colors
         status_colors = {
             'good': '#4CAF50',
@@ -531,19 +534,19 @@ class GeoVisualizer:
             'critical': '#F44336',
             'missing': '#9E9E9E'
         }
-        
+
         # Add coverage circles for each category
         angles = np.linspace(0, 2*np.pi, len(categories), endpoint=False)
-        
+
         for i, category in enumerate(categories):
             analysis = coverage_analysis[category]
             color = status_colors[analysis['status']]
-            
+
             # Position around property
             angle = angles[i]
             marker_lat = property_data.lat + 0.003 * np.cos(angle)
             marker_lon = property_data.lon + 0.003 * np.sin(angle)
-            
+
             # Add category status marker
             folium.Marker(
                 location=[marker_lat, marker_lon],
@@ -558,7 +561,7 @@ class GeoVisualizer:
                 tooltip=f"{category.title()}: {analysis['status']}",
                 icon=folium.Icon(color=color, icon='info-sign')
             ).add_to(m)
-            
+
             # Add coverage circle if service exists
             if analysis['status'] != 'missing':
                 folium.Circle(
@@ -570,12 +573,12 @@ class GeoVisualizer:
                     fillOpacity=0.1,
                     weight=1
                 ).add_to(m)
-        
+
         # Add all POIs
         for poi in pois:
             analysis = coverage_analysis[poi.category]
             color = status_colors[analysis['status']]
-            
+
             folium.CircleMarker(
                 location=[poi.lat, poi.lon],
                 radius=4,
@@ -592,10 +595,10 @@ class GeoVisualizer:
                 fill=True,
                 fillOpacity=0.7
             ).add_to(m)
-        
+
         # Count gaps
         gaps = sum(1 for analysis in coverage_analysis.values() if analysis['status'] in ['missing', 'critical'])
-        
+
         # Add legend
         legend_html = f"""
         <div style="position: fixed; top: 10px; right: 10px; width: 220px; 
@@ -611,64 +614,66 @@ class GeoVisualizer:
         </div>
         """
         m.get_root().html.add_child(folium.Element(legend_html))
-        
+
         return MapVisualization(
             map_html=m._repr_html_(),
             map_type="service_gaps",
             title="Análise de Gaps de Serviços",
             description=f"Identificados {gaps} gaps de serviços em {len(categories)} categorias"
         )
-    
-    def create_all_advanced_maps(self, property_data: PropertyData, pois: List[POI], 
-                                metrics: NeighborhoodMetrics) -> Dict[str, MapVisualization]:
+
+    def create_all_advanced_maps(
+        self, property_data: PropertyData, pois: List[POI],
+        metrics: NeighborhoodMetrics
+    ) -> Dict[str, MapVisualization]:
         """Create all advanced map visualizations"""
-        
+
         logger.info(f"Creating advanced maps for {len(pois)} POIs")
-        
+
         maps = {}
-        
+
         try:
             # 1. Distance zones map
             maps['distance_zones'] = self.create_distance_zones_map(property_data, pois)
-            
+
             # 2. Service clusters map
             maps['service_clusters'] = self.create_service_clusters_map(property_data, pois)
-            
+
             # 3. Walkability directions map
             maps['walkability_directions'] = self.create_walkability_directions_map(property_data, pois)
-            
+
             # 4. Service gaps map
             maps['service_gaps'] = self.create_service_gaps_map(property_data, pois)
-            
+
             # 5. Category heatmaps
             main_categories = ['food', 'transport', 'healthcare', 'education', 'shopping']
             for category in main_categories:
                 if any(poi.category == category for poi in pois):
                     maps[f'heatmap_{category}'] = self.create_category_heatmap(property_data, pois, category)
-            
+
             logger.info(f"Successfully created {len(maps)} advanced maps")
-            
+
         except Exception as e:
             logger.error(f"Error creating advanced maps: {str(e)}")
-        
+
         return maps
-    
+
     def _create_empty_map(self, property_data: PropertyData, message: str) -> MapVisualization:
         """Create empty map with message"""
-        
+
         m = folium.Map(
             location=[property_data.lat, property_data.lon],
             zoom_start=15,
             tiles='OpenStreetMap'
         )
-        
+
         folium.Marker(
             location=[property_data.lat, property_data.lon],
             popup=f"<b>{property_data.address}</b><br>{message}",
             tooltip="Propriedade Analisada",
             icon=folium.Icon(color='red', icon='home', prefix='fa')
         ).add_to(m)
-        
+
         return MapVisualization(
             map_html=m._repr_html_(),
             map_type="empty",

@@ -7,10 +7,9 @@ Execute este arquivo para iniciar o UrbanSight:
 python run_urbansight.py
 """
 
-import os
 import sys
 import subprocess
-from pathlib import Path
+
 
 def check_requirements():
     """Verifica se todas as dependências estão instaladas"""
@@ -26,6 +25,7 @@ def check_requirements():
         print(f"❌ Dependência não encontrada: {e}")
         print("💡 Execute: pip install -r requirements.txt")
         return False
+
 
 def print_banner():
     """Exibe o banner do UrbanSight"""
@@ -44,31 +44,32 @@ def print_banner():
     """
     print(banner)
 
+
 def main():
     """Função principal"""
     print_banner()
-    
+
     print("🔍 Verificando dependências...")
     if not check_requirements():
         print("\n❌ Por favor, instale as dependências antes de continuar.")
         print("💻 Execute: pip install -r requirements.txt")
         sys.exit(1)
-    
+
     print("\n🚀 Iniciando UrbanSight...")
     print("🌐 A aplicação será aberta em: http://localhost:8501")
     print("⏰ Aguarde alguns segundos para o carregamento completo...")
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("🏙️  BEM-VINDO AO URBANSIGHT!")
     print("📍 Digite um endereço e descubra insights incríveis!")
-    print("="*60 + "\n")
-    
+    print("=" * 60 + "\n")
+
     try:
         # Executa o Streamlit
         subprocess.run([
-            sys.executable, 
-            "-m", 
-            "streamlit", 
-            "run", 
+            sys.executable,
+            "-m",
+            "streamlit",
+            "run",
             "streamlit_app.py",
             "--server.port=8501",
             "--server.address=localhost",
@@ -81,6 +82,7 @@ def main():
         print("\n\n👋 UrbanSight encerrado pelo usuário.")
         print("💫 Obrigado por usar o UrbanSight - Inteligência Imobiliária!")
         sys.exit(0)
+
 
 if __name__ == "__main__":
     main() 
